@@ -4,6 +4,7 @@
   "description": "TRSS Yunzai plugin for querying CPA quotas and S2A channel status",
   "type": "module",
   "author": "RealHeart",
+  "license": "GPL-3.0-only",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/starhui-dev/ops-query-plugin.git"

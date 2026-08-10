@@ -94,3 +94,7 @@ pnpm check
 
 - [TRSS Yunzai](https://github.com/TimeRainStarSky/Yunzai)
 - [CLIProxyAPI](https://github.com/router-for-me/CLIProxyAPI)
+
+## 许可证
+
+本项目使用 [GNU General Public License v3.0](LICENSE)（`GPL-3.0-only`）。
