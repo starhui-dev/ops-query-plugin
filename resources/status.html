@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      {{@styles}}
+    </style>
+  </head>
+  <body>
+    <main id="container" class="report theme-{{theme}}">
+      {{if backgroundImage}}
+      <img class="report-background" src="{{backgroundImage}}" alt="" />
+      {{/if}}
+      <div class="scrim"></div>
+
+      <div class="report-content">
+        <header class="report-header">
+          <div class="header-copy">
+            <div class="kicker">{{kicker}}</div>
+            <h1>{{title}}</h1>
+            <p>{{subtitle}}</p>
+          </div>
+          <div class="updated-at">
+            <span>UPDATED</span>
+            <strong>{{updatedAt}}</strong>
+          </div>
+        </header>
+
+        <section class="summary" aria-label="状态汇总">
+          {{each summary item}}
+          <div class="summary-item tone-{{item.tone}}">
+            <span>{{item.label}}</span>
+            <strong>{{item.value}}</strong>
+          </div>
+          {{/each}}
+        </section>
+
+        <div class="section-list">
+          {{each sections section}}
+          <section class="status-section">
+            <header class="section-header">
+              <div class="section-title">
+                {{if section.kind}}<span class="section-kind">{{section.kind}}</span>{{/if}}
+                <h2>{{section.title}}</h2>
+                <p>{{section.subtitle}}</p>
+              </div>
+              <span class="badge tone-{{section.badgeTone}}">{{section.badge}}</span>
+            </header>
+
+            <div class="data-grid">
+              {{each section.rows row}}
+              <div class="data-row tone-{{row.tone}}{{if row.wide}} row-wide{{/if}}">
+                <div class="data-copy">
+                  <span class="data-label">{{row.label}}</span>
+                  {{if row.detail}}<span class="data-detail">{{row.detail}}</span>{{/if}}
+                </div>
+                <strong class="data-value">{{row.value}}</strong>
+                {{if row.segments}}
+                <div class="activity-strip" aria-label="最近活动">
+                  {{each row.segments segment}}
+                  <i class="activity-segment tone-{{segment.tone}}" title="{{segment.label}}"></i>
+                  {{/each}}
+                </div>
+                {{/if}} {{if row.progress !== null && row.progress !== undefined}}
+                <div class="progress-track">
+                  <span class="progress-fill" style="width: {{row.progress}}%"></span>
+                </div>
+                {{/if}}
+              </div>
+              {{/each}}
+            </div>
+          </section>
+          {{/each}} {{if !sections.length}}
+          <section class="empty-state">
+            <strong>暂无可展示的数据</strong>
+            <span>请稍后重试或检查服务配置</span>
+          </section>
+          {{/if}}
+        </div>
+
+        <footer class="report-footer">
+          <span>OPS QUERY</span>
+          <span>TRSS Yunzai</span>
+        </footer>
+      </div>
+    </main>
+  </body>
+</html>

@@ -1,0 +1,38 @@
+{
+  "name": "ops-query-plugin",
+  "version": "0.1.0",
+  "description": "TRSS Yunzai plugin for querying CPA quotas and S2A channel status",
+  "type": "module",
+  "author": "RealHeart",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/starhui-dev/ops-query-plugin.git"
+  },
+  "bugs": {
+    "url": "https://github.com/starhui-dev/ops-query-plugin/issues"
+  },
+  "homepage": "https://github.com/starhui-dev/ops-query-plugin#readme",
+  "keywords": [
+    "trss-yunzai",
+    "yunzai",
+    "cliproxyapi",
+    "sub2api",
+    "codex"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
+  "packageManager": "pnpm@11.4.0",
+  "scripts": {
+    "check": "pnpm format:check && pnpm test",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "test": "node --test"
+  },
+  "dependencies": {
+    "yaml": "^2.9.0"
+  },
+  "devDependencies": {
+    "prettier": "^3.6.2"
+  }
+}

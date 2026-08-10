@@ -1,0 +1,24 @@
+cpa:
+  baseUrl: ""
+  managementKey: ""
+  timeoutMs: 10000
+
+s2a:
+  baseUrl: ""
+  adminApiKey: ""
+  timeoutMs: 10000
+
+display:
+  timeZone: "Asia/Shanghai"
+
+access:
+  groupWhitelist: []
+  queryUsers: []
+
+alerts:
+  enabled: false
+  intervalMinutes: 10
+  targetGroups: []
+  mentionMode: "none"
+  mentionUsers: []
+  accounts: []

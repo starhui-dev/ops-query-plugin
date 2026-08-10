@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      {{@styles}}
+    </style>
+  </head>
+  <body>
+    <main id="container" class="channel-report">
+      <img class="report-background" src="{{backgroundImage}}" alt="" />
+      <div class="scrim"></div>
+
+      <div class="report-content">
+        <header class="report-header">
+          <div class="header-copy">
+            <span class="kicker">{{kicker}}</span>
+            <h1>{{title}}</h1>
+            <p>{{subtitle}}</p>
+          </div>
+          <div class="overview tone-{{overallTone}}">
+            <span class="pulse"></span>
+            <div>
+              <small>OVERALL STATUS</small>
+              <strong>{{overallLabel}}</strong>
+            </div>
+          </div>
+        </header>
+
+        <section class="status-bar" aria-label="监控概览">
+          <div><span>监控周期</span><strong>{{periodLabel}}</strong></div>
+          <div><span>渠道总数</span><strong>{{counts.total}}</strong></div>
+          <div class="tone-success">
+            <span>运行正常</span><strong>{{counts.operational}}</strong>
+          </div>
+          <div class="tone-{{overallTone}}">
+            <span>异常 / 降级</span><strong>{{counts.problem}}</strong>
+          </div>
+          <div class="refresh"><span>REFRESH</span><strong>{{refreshLabel}}</strong></div>
+        </section>
+
+        <div class="channel-grid">
+          {{each channels channel}}
+          <article class="channel-card tone-{{channel.badgeTone}}">
+            <header class="card-header">
+              <div class="channel-copy">
+                <span class="provider">{{channel.provider}}</span>
+                <h2>{{channel.title}}</h2>
+                <p>{{channel.model}}</p>
+              </div>
+              <span class="badge"><i></i>{{channel.badge}}</span>
+            </header>
+
+            <div class="metric-grid">
+              <div class="metric tone-{{channel.latencyTone}}">
+                <span>对话延迟</span>
+                <strong>{{channel.latency}}</strong>
+              </div>
+              <div class="metric tone-{{channel.pingTone}}">
+                <span>端点 Ping</span>
+                <strong>{{channel.ping}}</strong>
+              </div>
+              <div class="metric tone-{{channel.availabilityTone}}">
+                <span>7 天可用率</span>
+                <strong>{{channel.availability}}</strong>
+              </div>
+            </div>
+
+            <div class="history">
+              <div class="history-heading">
+                <span>最近检测</span>
+                <small>{{channel.checkedAt}}</small>
+              </div>
+              <div class="history-strip">
+                {{each channel.checks check}}
+                <i class="history-segment tone-{{check.tone}}" title="{{check.label}}"></i>
+                {{/each}}
+              </div>
+              <div class="history-axis"><span>PAST</span><span>NOW</span></div>
+            </div>
+          </article>
+          {{/each}} {{if !channels.length}}
+          <section class="empty-state">
+            <strong>暂无渠道数据</strong>
+            <span>请检查 S2A 服务配置</span>
+          </section>
+          {{/if}}
+        </div>
+
+        <footer class="report-footer"><span>OPS QUERY</span><span>TRSS Yunzai</span></footer>
+      </div>
+    </main>
+  </body>
+</html>
