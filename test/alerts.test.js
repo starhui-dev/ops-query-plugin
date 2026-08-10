@@ -38,17 +38,21 @@ test("每个账号使用自己的阈值", () => {
     { account: "codex:codex-a", thresholdPercent: 20 },
     { account: "codex:codex-b", thresholdPercent: 5 },
   ]
-  const results = [codexResult("codex-a", 10, "account-a"), codexResult("codex-b", 6, "account-b")]
+  const results = [
+    codexResult("codex-a", 10, "user-a@example.com"),
+    codexResult("codex-b", 6, "user-b@example.com"),
+  ]
   const alerts = evaluateQuotaAlerts(rules, results)
   assert.equal(alerts.length, 1)
   assert.equal(alerts[0].account.authIndex, "codex-a")
   const text = formatQuotaAlerts(alerts)
-  assert.match(text, /Codex · account-a/)
+  assert.match(text, /Codex · u\.\.\.a@example\.com/)
+  assert.doesNotMatch(text, /user-a@example\.com|账号标识/)
   assert.doesNotMatch(text, /```|^#{1,6}\s|\*\*/m)
 })
 
 test("构建按账号区分的额度告警图片数据", () => {
-  const result = codexResult("codex-a", 8.5, "codex-account")
+  const result = codexResult("codex-a", 8.5, "alerts@example.com")
   const data = buildQuotaAlertImageData(
     [
       {
@@ -63,8 +67,9 @@ test("构建按账号区分的额度告警图片数据", () => {
   )
 
   assert.equal(data.title, "额度告警")
-  assert.equal(data.sections[0].title, "codex-account")
-  assert.equal(data.sections[0].subtitle, "Codex · codex-a")
+  assert.equal(data.sections[0].title, "a...s@example.com")
+  assert.equal(data.sections[0].subtitle, "Codex 账号")
+  assert.doesNotMatch(JSON.stringify(data), /alerts@example\.com|codex-a/)
   assert.equal(data.sections[0].rows[0].progress, 8.5)
   assert.equal(data.sections[0].rows[1].value, "20%")
 })

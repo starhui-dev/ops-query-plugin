@@ -38,11 +38,18 @@ test("汇总 CPA 内全部提供商的凭据状态", () => {
       { provider: "claude", unavailable: true },
       { provider: "gemini", status: "active" },
     ],
-    codexKeys: [],
+    codexKeys: [
+      {
+        "api-key": "sk-status-test",
+        "base-url": "https://relay.internal.example/v1",
+      },
+    ],
     apiKeyUsage: {},
   })
-  assert.match(text, /^CPA 状态\n凭据 4 个｜API 渠道 0 个/m)
-  assert.match(text, /Codex · user@example\.com · 正常/)
+  assert.match(text, /^CPA 状态\n凭据 4 个｜API 渠道 1 个/m)
+  assert.match(text, /Codex · u\.\.\.r@example\.com · 正常/)
+  assert.doesNotMatch(text, /user@example\.com|relay\.internal\.example/)
+  assert.match(text, /地址 已隐藏/)
   assert.match(text, /成功 20｜失败 1/)
   assert.match(text, /Claude · 未知账号 · 异常/)
 })
@@ -79,7 +86,7 @@ test("构建包含凭据和 API 渠道明细的 CPA 状态图片数据", () => {
         {
           provider: "codex",
           email: "user@gmail.com",
-          name: "codex-user-pro.json",
+          name: "codex-user@gmail.com-pro.json",
           auth_index: "auth-a",
           status: "active",
           success: 100,
@@ -124,15 +131,21 @@ test("构建包含凭据和 API 渠道明细的 CPA 状态图片数据", () => {
     ["2", "1", "1", "98%"],
   )
   assert.equal(data.sections.length, 3)
-  assert.equal(data.sections[0].title, "user@gmail.com")
+  assert.equal(data.sections[0].title, "u...r@gmail.com")
+  assert.equal(data.sections[0].subtitle, "凭据文件已隐藏")
   assert.equal(data.sections[0].rows.find(row => row.label === "近 3 小时健康").progress, 99)
   assert.equal(data.sections[0].rows.find(row => row.label === "文件").value, "4.15 KB")
   assert.equal(data.sections[2].title, "sk-1******cdef")
-  assert.equal(data.sections[2].subtitle, "https://codex.example.com")
+  assert.equal(data.sections[2].subtitle, "服务地址已隐藏")
   assert.equal(data.sections[2].rows.find(row => row.label === "模型").value, "2")
   assert.equal(data.sections[2].rows.find(row => row.label === "请求头").value, "1")
   assert.equal(data.sections[2].rows.find(row => row.label === "近 3 小时健康").progress, 0)
   assert.equal(data.updatedAt, "08/08 12:30")
+  const serialized = JSON.stringify(data)
+  assert.doesNotMatch(
+    serialized,
+    /user@gmail\.com|codex-user@gmail\.com-pro\.json|codex\.example\.com/,
+  )
 })
 
 test("解析 CPA api-call 的字符串响应", () => {
@@ -180,7 +193,8 @@ test("格式化 Codex 剩余额度窗口", () => {
       },
     },
   })
-  assert.match(text, /user@example\.com（plus）/)
+  assert.match(text, /u\.\.\.r@example\.com（plus）/)
+  assert.doesNotMatch(text, /user@example\.com/)
   assert.match(text, /Codex 5 小时：剩余 75%/)
   assert.match(text, /Codex 每周：剩余 40%/)
 })
@@ -200,11 +214,12 @@ test("额度报告使用纯文本", () => {
     },
   ])
   assert.match(text, /^CPA Codex 额度/m)
-  assert.match(text, /^Codex · user@gmail\.com$/m)
+  assert.match(text, /^Codex · u\.\.\.r@gmail\.com$/m)
+  assert.doesNotMatch(text, /user@gmail\.com/)
   assert.doesNotMatch(text, /```|^#{1,6}\s|\*\*/m)
 })
 
-test("构建 Codex 订阅图片数据并保留邮箱文本", () => {
+test("构建 Codex 订阅图片数据时隐藏账号", () => {
   const data = buildCpaQuotaImageData(
     [
       {
@@ -228,7 +243,9 @@ test("构建 Codex 订阅图片数据并保留邮箱文本", () => {
   )
 
   assert.equal(data.title, "Codex 订阅")
-  assert.equal(data.sections[0].title, "user@gmail.com")
+  assert.equal(data.sections[0].title, "u...r@gmail.com")
+  assert.equal(data.sections[0].subtitle, "Codex 账号")
+  assert.doesNotMatch(JSON.stringify(data), /user@gmail\.com/)
   assert.equal(data.sections[0].badge, "PLUS")
   assert.equal(data.sections[0].rows[0].progress, 75)
   assert.match(data.sections[0].rows[0].detail, /重置于/)
