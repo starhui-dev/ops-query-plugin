@@ -17,6 +17,7 @@ import {
   parseAlertAccount,
 } from "../lib/alerts.js"
 import { renderChannelsImage, renderStatusImage } from "../lib/render.js"
+import { fetchLatestCodexRadarImage } from "../lib/codex-radar.js"
 
 const alertStates = new Map()
 let lastAlertCheckAt = 0
@@ -42,6 +43,10 @@ export class OpsQuery extends plugin {
           fnc: "s2aStatus",
         },
         {
+          reg: "^#?Codex雷达$",
+          fnc: "codexRadar",
+        },
+        {
           reg: "^#?运维查询帮助$",
           fnc: "help",
         },
@@ -63,6 +68,7 @@ export class OpsQuery extends plugin {
         "#Codex额度：查询 CPA Codex 账号额度",
         "#CPA状态：查询 CPA 全部提供商凭据状态",
         "#S2A状态：查询 S2A 渠道监控",
+        "#Codex雷达：获取 Codex 雷达最新速览图",
       ].join("\n"),
     )
   }
@@ -116,6 +122,19 @@ export class OpsQuery extends plugin {
     } catch (error) {
       logger.error(`[运维查询] S2A 查询失败：${error instanceof Error ? error.stack : error}`)
       return this.reply(`S2A 查询失败：${safeError(error)}`)
+    }
+  }
+
+  async codexRadar() {
+    if (!(await this.ensureAccess())) return false
+    try {
+      const image = await fetchLatestCodexRadarImage()
+      return this.reply(segment.image(image))
+    } catch (error) {
+      logger.error(
+        `[运维查询] Codex 雷达速览图获取失败：${error instanceof Error ? error.stack : error}`,
+      )
+      return this.reply(`Codex 雷达速览图获取失败：${safeError(error)}`)
     }
   }
 
