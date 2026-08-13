@@ -19,6 +19,7 @@ const current = {
     mentionMode: "none",
     mentionUsers: [],
     accounts: [],
+    sla: { enabled: false, thresholdPercent: 99.5, timeRange: "1h" },
   },
 }
 
@@ -38,10 +39,24 @@ test("锅巴可以切换 S2A 监控版本", () => {
   assert.equal(updated.s2a.monitorVersion, "v2")
 })
 
+test("锅巴可以配置 Sub2API SLA 告警", () => {
+  const updated = applyConfigUpdate(current, {
+    "alerts.sla.enabled": true,
+    "alerts.sla.thresholdPercent": 99.9,
+    "alerts.sla.timeRange": "6h",
+  })
+  assert.deepEqual(updated.alerts.sla, {
+    enabled: true,
+    thresholdPercent: 99.9,
+    timeRange: "6h",
+  })
+})
+
 test("校验按账号告警及群白名单", () => {
   const valid = {
     ...current,
     alerts: {
+      ...current.alerts,
       enabled: true,
       intervalMinutes: 5,
       targetGroups: ["10001"],
@@ -87,5 +102,30 @@ test("拒绝无效配置", () => {
   assert.throws(
     () => validateConfig({ ...current, s2a: { ...current.s2a, timeoutMs: 100 } }),
     /1000 至 60000/,
+  )
+  assert.throws(
+    () =>
+      validateConfig({
+        ...current,
+        alerts: {
+          ...current.alerts,
+          sla: { enabled: true, thresholdPercent: 100.1, timeRange: "1h" },
+        },
+      }),
+    /SLA 告警阈值必须在 0 至 100/,
+  )
+})
+
+test("只启用 SLA 监控时不要求配置额度账号", () => {
+  assert.doesNotThrow(() =>
+    validateConfig({
+      ...current,
+      alerts: {
+        ...current.alerts,
+        enabled: true,
+        targetGroups: ["10001"],
+        sla: { enabled: true, thresholdPercent: 99.5, timeRange: "1h" },
+      },
+    }),
   )
 })

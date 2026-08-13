@@ -116,7 +116,7 @@ export function supportGuoba() {
           componentProps: { placeholder: "请选择允许查询的用户" },
         },
         {
-          label: "额度告警",
+          label: "告警配置",
           component: "SOFT_GROUP_BEGIN",
         },
         {
@@ -127,7 +127,7 @@ export function supportGuoba() {
         {
           field: "alerts.intervalMinutes",
           label: "检查间隔",
-          bottomHelpMessage: "每隔多少分钟检查一次账号额度",
+          bottomHelpMessage: "每隔多少分钟检查一次账号额度与 Sub2API SLA",
           component: "InputNumber",
           required: true,
           componentProps: { min: 1, max: 1440, step: 1 },
@@ -189,6 +189,35 @@ export function supportGuoba() {
               },
             ],
           },
+        },
+        {
+          field: "alerts.sla.enabled",
+          label: "SLA 监控",
+          bottomHelpMessage: "监控 Sub2API Ops SLA；业务限制类错误不会计入异常",
+          component: "Switch",
+        },
+        {
+          field: "alerts.sla.timeRange",
+          label: "SLA 统计窗口",
+          component: "Select",
+          required: true,
+          componentProps: {
+            options: [
+              { label: "近 5 分钟", value: "5m" },
+              { label: "近 30 分钟", value: "30m" },
+              { label: "近 1 小时", value: "1h" },
+              { label: "近 6 小时", value: "6h" },
+              { label: "近 24 小时", value: "24h" },
+            ],
+          },
+        },
+        {
+          field: "alerts.sla.thresholdPercent",
+          label: "SLA 告警阈值",
+          bottomHelpMessage: "排除业务限制后的 SLA 低于此值时告警",
+          component: "InputNumber",
+          required: true,
+          componentProps: { min: 0, max: 100, step: 0.001, addonAfter: "%" },
         },
       ],
       getConfigData() {

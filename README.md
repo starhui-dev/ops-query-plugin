@@ -1,7 +1,7 @@
 # ops-query-plugin
 
-面向 TRSS Yunzai 的运维查询与额度告警插件，集中展示 CLIProxyAPI（CPA）凭据、
-Codex 订阅额度和 Sub2API（S2A）渠道状态。
+面向 TRSS Yunzai 的运维查询与告警插件，集中展示 CLIProxyAPI（CPA）凭据、Codex
+订阅额度和 Sub2API（S2A）渠道状态。
 
 状态消息默认渲染为图片：随机动漫背景加载失败时自动使用本地备用图，信息区采用透明
 毛玻璃卡片，避免 QQ 将邮箱等内容误识别为链接。
@@ -15,6 +15,8 @@ Codex 订阅额度和 Sub2API（S2A）渠道状态。
   展示真实请求的成功率、首 Token 延迟、吞吐、缓存率、健康脉冲和模型排行。
 - 获取 Codex 雷达站发布的最新速览图。
 - 按账号设置独立额度阈值，向指定群聊发送图片告警并支持不提醒、@指定用户或@全体。
+- 按统计窗口监控 Sub2API SLA，排除余额不足、配额超限等业务限制，低于阈值时发送
+  图片告警。
 - 配置群聊白名单和可查询人员；Yunzai 主人可绕过全部查询限制。
 - 支持锅巴插件管理器，也可直接维护 YAML 配置。
 
@@ -60,20 +62,25 @@ pnpm install --prod --frozen-lockfile
 
 配置模板位于 [`config/config.example.yaml`](config/config.example.yaml)，主要配置项如下：
 
-| 配置项                  | 说明                                       |
-| ----------------------- | ------------------------------------------ |
-| `cpa.baseUrl`           | CLIProxyAPI 服务地址                       |
-| `cpa.managementKey`     | CLIProxyAPI Management Key                 |
-| `s2a.baseUrl`           | Sub2API 服务地址                           |
-| `s2a.adminApiKey`       | Sub2API Admin API Key                      |
-| `s2a.monitorVersion`    | 渠道监控版本，可选 `v1` 或 `v2`            |
-| `display.timeZone`      | 额度重置和状态更新时间所用时区             |
-| `access.groupWhitelist` | 普通用户可使用插件的群聊                   |
-| `access.queryUsers`     | 可执行查询的普通用户                       |
-| `alerts.*`              | 告警开关、周期、群聊、提醒方式和按账号阈值 |
+| 配置项                  | 说明                                     |
+| ----------------------- | ---------------------------------------- |
+| `cpa.baseUrl`           | CLIProxyAPI 服务地址                     |
+| `cpa.managementKey`     | CLIProxyAPI Management Key               |
+| `s2a.baseUrl`           | Sub2API 服务地址                         |
+| `s2a.adminApiKey`       | Sub2API Admin API Key                    |
+| `s2a.monitorVersion`    | 渠道监控版本，可选 `v1` 或 `v2`          |
+| `display.timeZone`      | 额度重置和状态更新时间所用时区           |
+| `access.groupWhitelist` | 普通用户可使用插件的群聊                 |
+| `access.queryUsers`     | 可执行查询的普通用户                     |
+| `alerts.*`              | 告警开关、周期、群聊、提醒方式及额度阈值 |
+| `alerts.sla.*`          | Sub2API SLA 开关、统计窗口和最低阈值     |
 
 告警目标群必须同时存在于群聊白名单。相同账号持续低于阈值时只提醒一次，额度恢复到
 阈值以上后再次降低才会重新提醒。
+
+SLA 告警使用 Sub2API Ops 概览的官方口径：`成功请求 /（成功请求 + 非业务限制异常）`。
+无有效请求样本时不会告警；SLA 恢复到阈值以上后，再次降低才会重新提醒。该接口要求
+Sub2API 已启用运维监控。
 
 `s2a.monitorVersion` 默认为 `v1`。选择 `v2` 前，需要先在 Sub2API 中启用渠道监控并将
 `channel_monitor_mode` 切换为 `v2`；否则 Sub2API 会拒绝 V2 监控接口请求。

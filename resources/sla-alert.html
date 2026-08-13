@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      {{@styles}}
+    </style>
+  </head>
+  <body>
+    <main id="container" class="sla-report">
+      <img class="report-background" src="{{backgroundImage}}" alt="" />
+      <div class="scrim"></div>
+
+      <div class="report-content">
+        <header class="report-header">
+          <div class="header-copy">
+            <span class="kicker">{{kicker}}</span>
+            <h1>{{title}}</h1>
+            <p>{{subtitle}}</p>
+          </div>
+          <div class="alert-state">
+            <i></i><span>SLA BELOW TARGET</span><strong>需要关注</strong>
+          </div>
+        </header>
+
+        <section class="sla-panel" aria-label="SLA 告警详情">
+          <div class="sla-heading">
+            <div>
+              <span>SERVICE LEVEL</span>
+              <strong>{{sla}}</strong>
+            </div>
+            <div class="target">
+              <span>告警阈值</span>
+              <strong>{{threshold}}</strong>
+            </div>
+          </div>
+          <div class="progress-track"><span style="width: {{progress}}%"></span></div>
+          <div class="sla-meta">
+            <span>{{timeRange}}</span>
+            <span>{{period}}</span>
+          </div>
+        </section>
+
+        <section class="metric-strip" aria-label="SLA 统计明细">
+          <article class="metric danger">
+            <span>异常数</span>
+            <strong>{{exceptionCount}}</strong>
+            <small>计入 SLA</small>
+          </article>
+          <article class="metric excluded">
+            <span>业务限制</span>
+            <strong>{{businessLimitedCount}}</strong>
+            <small>已从 SLA 排除</small>
+          </article>
+          <article class="metric">
+            <span>SLA 请求</span>
+            <strong>{{requestCount}}</strong>
+            <small>有效统计样本</small>
+          </article>
+          <article class="metric success">
+            <span>成功请求</span>
+            <strong>{{successCount}}</strong>
+            <small>统计窗口内</small>
+          </article>
+        </section>
+
+        <section class="definition">
+          <span>CALCULATION</span>
+          <strong>SLA = 成功请求 /（成功请求 + 非业务限制异常）</strong>
+        </section>
+
+        <footer class="report-footer">
+          <span>OPS QUERY</span><span>更新于 {{updatedAt}}</span><span>TRSS Yunzai · Sub2API</span>
+        </footer>
+      </div>
+    </main>
+  </body>
+</html>

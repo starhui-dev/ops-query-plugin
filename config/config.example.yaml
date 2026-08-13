@@ -23,3 +23,7 @@ alerts:
   mentionMode: "none"
   mentionUsers: []
   accounts: []
+  sla:
+    enabled: false
+    thresholdPercent: 99.5
+    timeRange: 1h

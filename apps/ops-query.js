@@ -9,6 +9,12 @@ import {
 } from "../lib/cpa.js"
 import { buildS2aImageData, formatS2aForwardNodes, queryS2aMonitors } from "../lib/s2a.js"
 import { buildS2aV2ImageData, formatS2aV2ForwardNodes, queryS2aV2Monitor } from "../lib/s2a-v2.js"
+import {
+  buildS2aSlaAlertImageData,
+  evaluateS2aSlaAlert,
+  formatS2aSlaAlert,
+  queryS2aSla,
+} from "../lib/s2a-sla.js"
 import { checkQueryAccess } from "../lib/access.js"
 import {
   buildQuotaAlertImageData,
@@ -17,10 +23,16 @@ import {
   formatQuotaAlerts,
   parseAlertAccount,
 } from "../lib/alerts.js"
-import { renderChannelsImage, renderChannelsV2Image, renderStatusImage } from "../lib/render.js"
+import {
+  renderChannelsImage,
+  renderChannelsV2Image,
+  renderSlaAlertImage,
+  renderStatusImage,
+} from "../lib/render.js"
 import { fetchLatestCodexRadarImage } from "../lib/codex-radar.js"
 
-const alertStates = new Map()
+const quotaAlertStates = new Map()
+const slaAlertStates = new Map()
 let lastAlertCheckAt = 0
 
 export class OpsQuery extends plugin {
@@ -54,9 +66,9 @@ export class OpsQuery extends plugin {
       ],
     })
     this.task = {
-      name: "CPA 额度监控",
+      name: "运维告警监控",
       cron: "0 * * * * ?",
-      fnc: this.checkQuotaAlerts.bind(this),
+      fnc: this.checkAlerts.bind(this),
       log: false,
     }
   }
@@ -157,13 +169,18 @@ export class OpsQuery extends plugin {
     return false
   }
 
-  async checkQuotaAlerts() {
+  async checkAlerts() {
     const config = loadConfig()
     if (!config.alerts.enabled) return
     const now = Date.now()
     if (now - lastAlertCheckAt < config.alerts.intervalMinutes * 60000) return
     lastAlertCheckAt = now
 
+    await Promise.all([this.checkQuotaAlerts(config), this.checkSlaAlert(config)])
+  }
+
+  async checkQuotaAlerts(config) {
+    if (!config.alerts.accounts.length) return
     try {
       const authIndexes = config.alerts.accounts
         .map(parseAlertAccount)
@@ -172,20 +189,40 @@ export class OpsQuery extends plugin {
       if (!authIndexes.length) return
       const results = await queryCpaQuota(config.cpa, config.display.timeZone, authIndexes)
 
-      const alerts = evaluateQuotaAlerts(config.alerts.accounts, results, alertStates)
+      const alerts = evaluateQuotaAlerts(config.alerts.accounts, results, quotaAlertStates)
       if (!alerts.length) return
       const image = await renderStatusImage(
         buildQuotaAlertImageData(alerts, config.display.timeZone),
         `quota-alert-${Date.now()}`,
       )
-      const message = [...buildMentionSegments(config.alerts), image || formatQuotaAlerts(alerts)]
-      const whitelist = new Set(config.access.groupWhitelist)
-      for (const groupId of config.alerts.targetGroups) {
-        if (!whitelist.has(groupId)) continue
-        await Bot.pickGroup(groupId).sendMsg(message)
-      }
+      await this.sendAlert(config, image || formatQuotaAlerts(alerts))
     } catch (error) {
       logger.error(`[运维查询] CPA 额度监控失败：${error instanceof Error ? error.stack : error}`)
+    }
+  }
+
+  async checkSlaAlert(config) {
+    if (!config.alerts.sla.enabled) return
+    try {
+      const overview = await queryS2aSla(config.s2a, config.alerts.sla.timeRange)
+      const alert = evaluateS2aSlaAlert(config.alerts.sla, overview, slaAlertStates)
+      if (!alert) return
+      const image = await renderSlaAlertImage(
+        buildS2aSlaAlertImageData(alert, config.display.timeZone),
+        `s2a-sla-alert-${Date.now()}`,
+      )
+      await this.sendAlert(config, image || formatS2aSlaAlert(alert))
+    } catch (error) {
+      logger.error(`[运维查询] S2A SLA 监控失败：${error instanceof Error ? error.stack : error}`)
+    }
+  }
+
+  async sendAlert(config, content) {
+    const message = [...buildMentionSegments(config.alerts), content]
+    const whitelist = new Set(config.access.groupWhitelist)
+    for (const groupId of config.alerts.targetGroups) {
+      if (!whitelist.has(groupId)) continue
+      await Bot.pickGroup(groupId).sendMsg(message)
     }
   }
 }
