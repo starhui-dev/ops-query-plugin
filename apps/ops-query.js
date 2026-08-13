@@ -13,6 +13,7 @@ import {
   buildS2aSlaAlertImageData,
   evaluateS2aSlaAlert,
   formatS2aSlaAlert,
+  formatS2aSlaOverview,
   queryS2aSla,
 } from "../lib/s2a-sla.js"
 import { checkQueryAccess } from "../lib/access.js"
@@ -39,7 +40,7 @@ export class OpsQuery extends plugin {
   constructor() {
     super({
       name: "运维查询",
-      dsc: "查询 CPA Codex 额度和 S2A 渠道状态",
+      dsc: "查询 CPA Codex 额度、S2A 渠道状态和 SLA",
       event: "message",
       priority: 5000,
       rule: [
@@ -54,6 +55,10 @@ export class OpsQuery extends plugin {
         {
           reg: "^#?(S2A状态|渠道状态)$",
           fnc: "s2aStatus",
+        },
+        {
+          reg: "^#?(S2A\\s*)?SLA$",
+          fnc: "s2aSla",
         },
         {
           reg: "^#?Codex雷达$",
@@ -81,6 +86,7 @@ export class OpsQuery extends plugin {
         "#Codex额度：查询 CPA Codex 账号额度",
         "#CPA状态：查询 CPA 全部提供商凭据状态",
         "#S2A状态：查询 S2A 渠道监控",
+        "#SLA：查询 Sub2API SLA",
         "#Codex雷达：获取 Codex 雷达最新速览图",
       ].join("\n"),
     )
@@ -146,6 +152,19 @@ export class OpsQuery extends plugin {
     } catch (error) {
       logger.error(`[运维查询] S2A 查询失败：${error instanceof Error ? error.stack : error}`)
       return this.reply(`S2A 查询失败：${safeError(error)}`)
+    }
+  }
+
+  async s2aSla() {
+    if (!(await this.ensureAccess())) return false
+    try {
+      const config = loadConfig()
+      const timeRange = config.alerts.sla.timeRange
+      const overview = await queryS2aSla(config.s2a, timeRange)
+      return this.reply(formatS2aSlaOverview(overview, timeRange, config.display.timeZone))
+    } catch (error) {
+      logger.error(`[运维查询] S2A SLA 查询失败：${error instanceof Error ? error.stack : error}`)
+      return this.reply(`S2A SLA 查询失败：${safeError(error)}`)
     }
   }
 

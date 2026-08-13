@@ -4,6 +4,7 @@ import {
   buildS2aSlaAlertImageData,
   evaluateS2aSlaAlert,
   formatS2aSlaAlert,
+  formatS2aSlaOverview,
   queryS2aSla,
 } from "../lib/s2a-sla.js"
 
@@ -23,6 +24,25 @@ function overview(overrides = {}) {
 }
 
 const rule = { enabled: true, thresholdPercent: 99.9, timeRange: "1h" }
+
+test("格式化 S2A SLA 查询结果", () => {
+  const text = formatS2aSlaOverview(overview(), "1h", "Asia/Shanghai")
+  assert.match(text, /^Sub2API SLA/m)
+  assert.match(text, /近 1 小时｜08\/13 18:00 - 08\/13 19:00/)
+  assert.match(text, /当前 SLA  99\.500%/)
+  assert.match(text, /成功请求  995/)
+  assert.match(text, /异常数    5/)
+  assert.match(text, /业务限制  5（已排除）/)
+  assert.match(text, /SLA 请求  1000/)
+})
+
+test("S2A SLA 无统计样本时不显示虚假可用率", () => {
+  const text = formatS2aSlaOverview(
+    overview({ request_count_sla: 0, success_count: 0, error_count_sla: 0, sla: 0 }),
+  )
+  assert.match(text, /当前 SLA  -/)
+  assert.match(text, /SLA 请求  0/)
+})
 
 test("S2A SLA 低于阈值只告警一次，恢复后允许再次告警", () => {
   const states = new Map()

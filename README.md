@@ -17,6 +17,7 @@
 - 按账号设置独立额度阈值，向指定群聊发送图片告警并支持不提醒、@指定用户或@全体。
 - 按统计窗口监控 Sub2API SLA，排除余额不足、配额超限等业务限制，低于阈值时发送
   图片告警。
+- 查询当前统计窗口内的 Sub2API SLA、成功请求和异常明细。
 - 配置群聊白名单和可查询人员；Yunzai 主人可绕过全部查询限制。
 - 支持锅巴插件管理器，也可直接维护 YAML 配置。
 
@@ -55,6 +56,7 @@ pnpm install --prod --frozen-lockfile
 | `#Codex额度` / `#CPA Codex额度` | 查询 CPA Codex 账号订阅额度        |
 | `#CPA状态`                      | 查询 CPA 凭据和 Codex API 渠道状态 |
 | `#S2A状态` / `#渠道状态`        | 查询 S2A 渠道监控                  |
+| `#SLA` / `#S2A SLA`             | 查询 Sub2API SLA                   |
 | `#Codex雷达`                    | 获取 Codex 雷达最新速览图          |
 | `#运维查询帮助`                 | 显示命令帮助                       |
 
@@ -81,6 +83,9 @@ pnpm install --prod --frozen-lockfile
 SLA 告警使用 Sub2API Ops 概览的官方口径：`成功请求 /（成功请求 + 非业务限制异常）`。
 无有效请求样本时不会告警；SLA 恢复到阈值以上后，再次降低才会重新提醒。该接口要求
 Sub2API 已启用运维监控。
+
+`#SLA` 查询使用 `alerts.sla.timeRange` 配置的统计窗口，默认查询近 1 小时；无需启用
+SLA 告警即可使用。
 
 `s2a.monitorVersion` 默认为 `v1`。选择 `v2` 前，需要先在 Sub2API 中启用渠道监控并将
 `channel_monitor_mode` 切换为 `v2`；否则 Sub2API 会拒绝 V2 监控接口请求。
