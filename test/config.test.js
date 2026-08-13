@@ -4,7 +4,12 @@ import { applyConfigUpdate, validateConfig } from "../lib/config.js"
 
 const current = {
   cpa: { baseUrl: "https://cpa.old", managementKey: "cpa-secret", timeoutMs: 10000 },
-  s2a: { baseUrl: "https://s2a.old", adminApiKey: "s2a-secret", timeoutMs: 10000 },
+  s2a: {
+    baseUrl: "https://s2a.old",
+    adminApiKey: "s2a-secret",
+    timeoutMs: 10000,
+    monitorVersion: "v1",
+  },
   display: { timeZone: "Asia/Shanghai" },
   access: { groupWhitelist: ["10001"], queryUsers: ["20001"] },
   alerts: {
@@ -26,6 +31,11 @@ test("锅巴留空密钥时保留原值", () => {
   assert.equal(updated.cpa.baseUrl, "https://cpa.new")
   assert.equal(updated.cpa.managementKey, "cpa-secret")
   assert.equal(updated.s2a.adminApiKey, "s2a-secret")
+})
+
+test("锅巴可以切换 S2A 监控版本", () => {
+  const updated = applyConfigUpdate(current, { "s2a.monitorVersion": "v2" })
+  assert.equal(updated.s2a.monitorVersion, "v2")
 })
 
 test("校验按账号告警及群白名单", () => {

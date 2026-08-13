@@ -8,6 +8,7 @@ import {
   queryCpaStatus,
 } from "../lib/cpa.js"
 import { buildS2aImageData, formatS2aForwardNodes, queryS2aMonitors } from "../lib/s2a.js"
+import { buildS2aV2ImageData, formatS2aV2ForwardNodes, queryS2aV2Monitor } from "../lib/s2a-v2.js"
 import { checkQueryAccess } from "../lib/access.js"
 import {
   buildQuotaAlertImageData,
@@ -16,7 +17,7 @@ import {
   formatQuotaAlerts,
   parseAlertAccount,
 } from "../lib/alerts.js"
-import { renderChannelsImage, renderStatusImage } from "../lib/render.js"
+import { renderChannelsImage, renderChannelsV2Image, renderStatusImage } from "../lib/render.js"
 import { fetchLatestCodexRadarImage } from "../lib/codex-radar.js"
 
 const alertStates = new Map()
@@ -110,6 +111,17 @@ export class OpsQuery extends plugin {
     if (!(await this.ensureAccess())) return false
     try {
       const config = loadConfig()
+      if (config.s2a.monitorVersion === "v2") {
+        const report = await queryS2aV2Monitor(config.s2a)
+        const image = await renderChannelsV2Image(
+          buildS2aV2ImageData(report, config.display.timeZone),
+          `s2a-status-v2-${Date.now()}`,
+        )
+        if (image) return this.reply(image)
+        return this.reply(
+          Bot.makeForwardArray(formatS2aV2ForwardNodes(report, config.display.timeZone)),
+        )
+      }
       const monitors = await queryS2aMonitors(config.s2a)
       const image = await renderChannelsImage(
         buildS2aImageData(monitors, config.display.timeZone),

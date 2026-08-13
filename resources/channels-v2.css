@@ -1,0 +1,530 @@
+:root {
+  --paper: #f5f8f7;
+  --secondary: rgba(238, 244, 242, 0.72);
+  --line: rgba(255, 255, 255, 0.2);
+  --glass: rgba(7, 13, 17, 0.48);
+  --glass-strong: rgba(9, 18, 24, 0.68);
+  --success: #55dda5;
+  --warning: #ffd166;
+  --danger: #ff6f69;
+  --info: #73d2ed;
+  --muted: #65727b;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  width: 1800px;
+  margin: 0;
+  padding: 0;
+  background: transparent;
+  color: var(--paper);
+  font-family: "LXGW WenKai", "Microsoft YaHei", sans-serif;
+  letter-spacing: 0;
+}
+
+.monitor-report {
+  position: relative;
+  width: 1800px;
+  min-height: 1080px;
+  overflow: hidden;
+  background: #071016;
+}
+
+.report-background,
+.scrim {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.report-background {
+  object-fit: cover;
+  object-position: center;
+}
+
+.scrim {
+  background: rgba(3, 8, 12, 0.55);
+  box-shadow: inset 0 0 260px rgba(0, 0, 0, 0.52);
+}
+
+.report-content {
+  position: relative;
+  z-index: 1;
+  min-height: 1080px;
+  padding: 48px 58px 30px;
+  display: flex;
+  flex-direction: column;
+}
+
+.report-header,
+.title-line,
+.overview,
+.panel-heading,
+.matrix-legend,
+.model-name,
+.report-footer {
+  display: flex;
+  align-items: center;
+}
+
+.report-header,
+.panel-heading,
+.report-footer {
+  justify-content: space-between;
+}
+
+.report-header {
+  align-items: flex-start;
+  gap: 44px;
+}
+
+.header-copy {
+  min-width: 0;
+}
+
+.kicker,
+.section-kicker,
+.overview small,
+.monitor-toolbar span,
+.summary-cell span,
+.matrix-header,
+.model-header,
+.report-footer {
+  font-family: "LXGW WenKai Mono", monospace;
+}
+
+.kicker,
+.section-kicker {
+  color: var(--info);
+  font-weight: 700;
+}
+
+.kicker {
+  font-size: 15px;
+}
+
+.title-line {
+  gap: 14px;
+  margin-top: 5px;
+}
+
+h1,
+h2,
+p {
+  margin: 0;
+}
+
+h1 {
+  font-size: 46px;
+  line-height: 1.08;
+}
+
+.version-badge,
+.range-note,
+.panel-meta span {
+  border: 1px solid rgba(115, 210, 237, 0.42);
+  border-radius: 5px;
+  color: var(--info);
+  background: rgba(24, 88, 109, 0.2);
+}
+
+.version-badge {
+  padding: 5px 9px;
+  font-family: "LXGW WenKai Mono", monospace;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.header-copy p {
+  margin-top: 8px;
+  color: var(--secondary);
+  font-size: 18px;
+}
+
+.overview {
+  min-width: 290px;
+  padding: 15px 19px;
+  gap: 14px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--glass);
+  box-shadow:
+    inset 0 1px rgba(255, 255, 255, 0.1),
+    0 18px 40px rgba(0, 0, 0, 0.22);
+  backdrop-filter: blur(26px) saturate(145%);
+}
+
+.overview small,
+.overview strong,
+.overview div > span {
+  display: block;
+}
+
+.overview small {
+  color: var(--secondary);
+  font-size: 11px;
+}
+
+.overview strong {
+  margin-top: 2px;
+  color: var(--tone-color);
+  font-size: 18px;
+}
+
+.overview div > span {
+  margin-top: 2px;
+  color: var(--secondary);
+  font-size: 12px;
+}
+
+.pulse {
+  width: 11px;
+  height: 11px;
+  flex: 0 0 auto;
+  border-radius: 50%;
+  background: var(--tone-color);
+  box-shadow: 0 0 17px var(--tone-color);
+}
+
+.monitor-toolbar {
+  margin-top: 24px;
+  display: grid;
+  grid-template-columns: 1.15fr 1.15fr 1fr 0.7fr 1.25fr;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: rgba(7, 13, 17, 0.42);
+  backdrop-filter: blur(26px) saturate(145%);
+}
+
+.monitor-toolbar > div {
+  min-width: 0;
+  min-height: 62px;
+  padding: 12px 18px;
+  border-right: 1px solid var(--line);
+}
+
+.monitor-toolbar > div:last-child {
+  border-right: 0;
+}
+
+.monitor-toolbar span,
+.monitor-toolbar strong {
+  display: block;
+  overflow-wrap: anywhere;
+}
+
+.monitor-toolbar span {
+  color: var(--secondary);
+  font-size: 11px;
+}
+
+.monitor-toolbar strong {
+  margin-top: 4px;
+  font-size: 16px;
+}
+
+.monitor-toolbar .refresh {
+  text-align: right;
+}
+
+.summary-grid {
+  margin-top: 18px;
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.summary-cell {
+  min-width: 0;
+  min-height: 105px;
+  padding: 17px 19px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--glass);
+  box-shadow:
+    inset 0 1px rgba(255, 255, 255, 0.1),
+    0 16px 38px rgba(0, 0, 0, 0.2);
+  backdrop-filter: blur(26px) saturate(145%);
+}
+
+.summary-cell span,
+.summary-cell strong,
+.summary-cell small {
+  display: block;
+  overflow-wrap: anywhere;
+}
+
+.summary-cell span {
+  color: var(--secondary);
+  font-size: 12px;
+}
+
+.summary-cell strong {
+  margin-top: 7px;
+  color: var(--tone-color, var(--paper));
+  font-family: "LXGW WenKai Mono", monospace;
+  font-size: 25px;
+  line-height: 1;
+}
+
+.summary-cell small {
+  margin-top: 8px;
+  color: rgba(238, 244, 242, 0.58);
+  font-size: 10px;
+}
+
+.matrix-panel,
+.model-panel {
+  margin-top: 18px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--glass-strong);
+  box-shadow:
+    inset 0 1px rgba(255, 255, 255, 0.1),
+    0 20px 48px rgba(0, 0, 0, 0.24);
+  backdrop-filter: blur(28px) saturate(145%);
+  overflow: hidden;
+}
+
+.panel-heading {
+  min-height: 78px;
+  padding: 15px 20px;
+  gap: 24px;
+  border-bottom: 1px solid var(--line);
+}
+
+.panel-heading.compact {
+  min-height: 66px;
+}
+
+.section-kicker {
+  display: block;
+  font-size: 9px;
+}
+
+.panel-heading h2 {
+  margin-top: 2px;
+  font-size: 19px;
+  line-height: 1.15;
+}
+
+.panel-heading p {
+  margin-top: 3px;
+  color: var(--secondary);
+  font-size: 11px;
+}
+
+.panel-meta {
+  text-align: right;
+}
+
+.panel-meta span,
+.panel-meta strong {
+  display: block;
+}
+
+.panel-meta span,
+.range-note {
+  padding: 4px 7px;
+  font-size: 10px;
+}
+
+.panel-meta strong {
+  margin-top: 5px;
+  color: var(--secondary);
+  font-size: 10px;
+}
+
+.matrix-table,
+.model-table {
+  padding: 8px 16px 0;
+}
+
+.matrix-row {
+  min-height: 43px;
+  display: grid;
+  grid-template-columns: minmax(220px, 1.35fr) 105px 110px 105px 100px minmax(420px, 3fr);
+  align-items: center;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.matrix-row > span,
+.matrix-row > strong {
+  min-width: 0;
+  padding: 0 9px;
+  font-family: "LXGW WenKai Mono", monospace;
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+
+.matrix-header {
+  min-height: 34px;
+  color: rgba(238, 244, 242, 0.58);
+  background: rgba(115, 210, 237, 0.07);
+  font-size: 9px;
+  font-weight: 700;
+}
+
+.matrix-header > span {
+  font-size: 9px;
+}
+
+.dimension {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--paper);
+}
+
+.dimension > i,
+.model-name > i,
+.matrix-legend i {
+  width: 7px;
+  height: 7px;
+  flex: 0 0 auto;
+  border-radius: 50%;
+  background: var(--tone-color);
+  box-shadow: 0 0 9px var(--tone-color);
+}
+
+.axis {
+  display: flex !important;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.axis i {
+  font-style: normal;
+}
+
+.pulse-track {
+  height: 20px;
+  padding: 0 8px;
+  display: flex;
+  align-items: stretch;
+  gap: 2px;
+}
+
+.pulse-cell {
+  min-width: 2px;
+  flex: 1 1 0;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 2px;
+  background: var(--tone-color);
+  box-shadow: 0 0 7px color-mix(in srgb, var(--tone-color) 34%, transparent);
+}
+
+.matrix-legend {
+  min-height: 42px;
+  padding: 8px 22px;
+  gap: 22px;
+  color: var(--secondary);
+  font-size: 10px;
+}
+
+.matrix-legend span {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.model-row {
+  min-height: 51px;
+  display: grid;
+  grid-template-columns: minmax(310px, 1.8fr) 1fr 1.5fr 0.9fr 0.9fr 0.7fr;
+  align-items: center;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.model-row:last-child,
+.matrix-row:last-child {
+  border-bottom: 0;
+}
+
+.model-row > span,
+.model-row > strong,
+.model-name {
+  min-width: 0;
+  padding: 7px 12px;
+}
+
+.model-header {
+  min-height: 32px;
+  color: rgba(238, 244, 242, 0.58);
+  background: rgba(115, 210, 237, 0.07);
+  font-size: 9px;
+  font-weight: 700;
+}
+
+.model-name {
+  gap: 10px;
+}
+
+.model-name span,
+.model-row > span {
+  display: block;
+}
+
+.model-row strong,
+.model-row small {
+  display: block;
+  overflow-wrap: anywhere;
+}
+
+.model-row strong {
+  font-family: "LXGW WenKai Mono", monospace;
+  font-size: 12px;
+}
+
+.model-row small {
+  margin-top: 2px;
+  color: rgba(238, 244, 242, 0.58);
+  font-size: 9px;
+}
+
+.model-name span > strong {
+  margin-top: 2px;
+  color: var(--paper);
+  font-size: 13px;
+}
+
+.panel-empty {
+  min-height: 92px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--secondary);
+  font-size: 13px;
+}
+
+.tone-success {
+  --tone-color: var(--success);
+}
+
+.tone-warning {
+  --tone-color: var(--warning);
+}
+
+.tone-danger {
+  --tone-color: var(--danger);
+}
+
+.tone-info {
+  --tone-color: var(--info);
+}
+
+.tone-muted {
+  --tone-color: var(--muted);
+}
+
+.report-footer {
+  margin-top: auto;
+  padding-top: 22px;
+  color: rgba(238, 244, 242, 0.5);
+  font-size: 10px;
+}

@@ -65,6 +65,19 @@ export function supportGuoba() {
           componentProps: { placeholder: "留空表示不修改" },
         },
         {
+          field: "s2a.monitorVersion",
+          label: "监控版本",
+          bottomHelpMessage: "V1 使用主动探测；V2 使用请求统计，需要服务端已切换为 V2 模式",
+          component: "Select",
+          required: true,
+          componentProps: {
+            options: [
+              { label: "V1 主动探测", value: "v1" },
+              { label: "V2 请求统计", value: "v2" },
+            ],
+          },
+        },
+        {
           field: "s2a.timeoutMs",
           label: "请求超时",
           bottomHelpMessage: "单个 HTTP 请求的超时时间，单位为毫秒",

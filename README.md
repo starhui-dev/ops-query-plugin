@@ -11,7 +11,8 @@ Codex 订阅额度和 Sub2API（S2A）渠道状态。
 - 查看 CPA OAuth 凭据和 Codex API 渠道状态，包括累计请求、近期健康率、优先级与
   WRR 权重；API Key 始终脱敏。
 - 按 CPA Codex 账号查看订阅额度、套餐和重置时间。
-- 查看 S2A 渠道的对话延迟、端点 Ping、7 天可用率和最近 60 次检测记录。
+- 支持切换 S2A V1 / V2 监控：V1 展示主动探测延迟、Ping、可用率和检测记录；V2
+  展示真实请求的成功率、首 Token 延迟、吞吐、缓存率、健康脉冲和模型排行。
 - 获取 Codex 雷达站发布的最新速览图。
 - 按账号设置独立额度阈值，向指定群聊发送图片告警并支持不提醒、@指定用户或@全体。
 - 配置群聊白名单和可查询人员；Yunzai 主人可绕过全部查询限制。
@@ -65,6 +66,7 @@ pnpm install --prod --frozen-lockfile
 | `cpa.managementKey`     | CLIProxyAPI Management Key                 |
 | `s2a.baseUrl`           | Sub2API 服务地址                           |
 | `s2a.adminApiKey`       | Sub2API Admin API Key                      |
+| `s2a.monitorVersion`    | 渠道监控版本，可选 `v1` 或 `v2`            |
 | `display.timeZone`      | 额度重置和状态更新时间所用时区             |
 | `access.groupWhitelist` | 普通用户可使用插件的群聊                   |
 | `access.queryUsers`     | 可执行查询的普通用户                       |
@@ -72,6 +74,9 @@ pnpm install --prod --frozen-lockfile
 
 告警目标群必须同时存在于群聊白名单。相同账号持续低于阈值时只提醒一次，额度恢复到
 阈值以上后再次降低才会重新提醒。
+
+`s2a.monitorVersion` 默认为 `v1`。选择 `v2` 前，需要先在 Sub2API 中启用渠道监控并将
+`channel_monitor_mode` 切换为 `v2`；否则 Sub2API 会拒绝 V2 监控接口请求。
 
 ## 安全说明
 
@@ -89,8 +94,8 @@ pnpm install
 pnpm check
 ```
 
-测试覆盖查询权限、配置校验、按账号告警、CPA 状态与额度格式化，以及 S2A 渠道历史
-数据处理。
+测试覆盖查询权限、配置校验、按账号告警、CPA 状态与额度格式化，以及 S2A V1 渠道
+历史与 V2 聚合指标处理。
 
 ## 上游项目
 

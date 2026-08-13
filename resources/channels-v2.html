@@ -1,0 +1,160 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      {{@styles}}
+    </style>
+  </head>
+  <body>
+    <main id="container" class="monitor-report">
+      <img class="report-background" src="{{backgroundImage}}" alt="" />
+      <div class="scrim"></div>
+
+      <div class="report-content">
+        <header class="report-header">
+          <div class="header-copy">
+            <span class="kicker">{{kicker}}</span>
+            <div class="title-line">
+              <h1>{{title}}</h1>
+              <span class="version-badge">V2</span>
+            </div>
+            <p>{{subtitle}}</p>
+          </div>
+          <div class="overview tone-{{overallTone}}">
+            <span class="pulse"></span>
+            <div>
+              <small>OVERALL STATUS</small>
+              <strong>{{overallLabel}}</strong>
+              <span>{{coverageLabel}}</span>
+            </div>
+          </div>
+        </header>
+
+        <section class="monitor-toolbar" aria-label="监控范围">
+          <div><span>统计周期</span><strong>{{rangeLabel}}</strong></div>
+          <div><span>数据截至</span><strong>{{updatedAt}}</strong></div>
+          <div><span>聚合粒度</span><strong>{{bucketLabel}}</strong></div>
+          <div><span>模型数量</span><strong>{{modelCount}}</strong></div>
+          <div class="refresh"><span>GENERATED</span><strong>{{generatedAt}}</strong></div>
+        </section>
+
+        <section class="summary-grid" aria-label="核心指标">
+          <article class="summary-cell">
+            <span>成功率</span>
+            <strong>{{summary.successRate}}</strong>
+            <small>错误率 {{summary.errorRate}}</small>
+          </article>
+          <article class="summary-cell">
+            <span>首 Token P50</span>
+            <strong>{{summary.ttft}}</strong>
+            <small>{{summary.ttftDetail}}</small>
+          </article>
+          <article class="summary-cell">
+            <span>每秒 Token</span>
+            <strong>{{summary.tps}}</strong>
+            <small>由 TPM 换算</small>
+          </article>
+          <article class="summary-cell tone-success">
+            <span>缓存率</span>
+            <strong>{{summary.cacheRate}}</strong>
+            <small>缓存 Token 占比</small>
+          </article>
+          <article class="summary-cell">
+            <span>RPM</span>
+            <strong>{{summary.rpm}}</strong>
+            <small>每分钟请求数</small>
+          </article>
+        </section>
+
+        <section class="matrix-panel">
+          <header class="panel-heading">
+            <div>
+              <span class="section-kicker">LIVE PULSE</span>
+              <h2>可用性趋势</h2>
+              <p>按平台与分组聚合，每个色块代表一个统计区间</p>
+            </div>
+            <div class="panel-meta"><span>{{bucketLabel}}</span><strong>综合健康度</strong></div>
+          </header>
+
+          <div class="matrix-table">
+            <div class="matrix-row matrix-header">
+              <span>平台 / 分组</span>
+              <span>成功率</span>
+              <span>首 Token</span>
+              <span>每秒 Token</span>
+              <span>缓存率</span>
+              <span class="axis"><i>{{axis.start}}</i><i>{{axis.end}}</i></span>
+            </div>
+            {{each matrixRows row}}
+            <div class="matrix-row">
+              <strong class="dimension"><i class="tone-{{row.tone}}"></i>{{row.label}}</strong>
+              <span>{{row.successRate}}</span>
+              <span>{{row.ttft}}</span>
+              <span>{{row.tps}}</span>
+              <span>{{row.cacheRate}}</span>
+              <div class="pulse-track">
+                {{each row.buckets bucket}}
+                <i class="pulse-cell tone-{{bucket.tone}}" title="{{bucket.label}}"></i>
+                {{/each}}
+              </div>
+            </div>
+            {{/each}} {{if !matrixRows.length}}
+            <div class="panel-empty">暂无可用性趋势数据</div>
+            {{/if}}
+          </div>
+
+          <footer class="matrix-legend">
+            <span><i class="tone-success"></i>健康</span>
+            <span><i class="tone-warning"></i>需关注</span>
+            <span><i class="tone-danger"></i>异常</span>
+            <span><i class="tone-muted"></i>无流量 / 样本不足</span>
+          </footer>
+        </section>
+
+        <section class="model-panel">
+          <header class="panel-heading compact">
+            <div>
+              <span class="section-kicker">MODEL RANKING</span>
+              <h2>模型表现</h2>
+            </div>
+            <span class="range-note">{{rangeLabel}}</span>
+          </header>
+          <div class="model-table">
+            <div class="model-row model-header">
+              <span>平台 / 模型</span>
+              <span>成功率</span>
+              <span>首 Token P50</span>
+              <span>每秒 Token</span>
+              <span>缓存率</span>
+              <span>RPM</span>
+            </div>
+            {{each models model}}
+            <div class="model-row">
+              <div class="model-name">
+                <i class="tone-{{model.tone}}"></i>
+                <span><small>{{model.platform}}</small><strong>{{model.model}}</strong></span>
+              </div>
+              <span
+                ><strong>{{model.successRate}}</strong
+                ><small>错误率 {{model.errorRate}}</small></span
+              >
+              <span><strong>{{model.ttft}}</strong><small>{{model.ttftDetail}}</small></span>
+              <strong>{{model.tps}}</strong>
+              <strong>{{model.cacheRate}}</strong>
+              <strong>{{model.rpm}}</strong>
+            </div>
+            {{/each}} {{if !models.length}}
+            <div class="panel-empty">暂无模型统计数据</div>
+            {{/if}}
+          </div>
+        </section>
+
+        <footer class="report-footer">
+          <span>OPS QUERY</span><span>TRSS Yunzai · Sub2API V2</span>
+        </footer>
+      </div>
+    </main>
+  </body>
+</html>
