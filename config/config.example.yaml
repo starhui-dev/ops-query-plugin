@@ -1,8 +1,3 @@
-cpa:
-  baseUrl: ""
-  managementKey: ""
-  timeoutMs: 10000
-
 s2a:
   baseUrl: ""
   adminApiKey: ""

@@ -3,7 +3,6 @@ import test from "node:test"
 import { applyConfigUpdate, validateConfig } from "../lib/config.js"
 
 const current = {
-  cpa: { baseUrl: "https://cpa.old", managementKey: "cpa-secret", timeoutMs: 10000 },
   s2a: {
     baseUrl: "https://s2a.old",
     adminApiKey: "s2a-secret",
@@ -23,14 +22,10 @@ const current = {
   },
 }
 
-test("锅巴留空密钥时保留原值", () => {
+test("锅巴留空 S2A 密钥时保留原值", () => {
   const updated = applyConfigUpdate(current, {
-    "cpa.baseUrl": "https://cpa.new",
-    "cpa.managementKey": "",
     "s2a.adminApiKey": "",
   })
-  assert.equal(updated.cpa.baseUrl, "https://cpa.new")
-  assert.equal(updated.cpa.managementKey, "cpa-secret")
   assert.equal(updated.s2a.adminApiKey, "s2a-secret")
 })
 
@@ -52,7 +47,14 @@ test("锅巴可以配置 Sub2API SLA 告警", () => {
   })
 })
 
-test("校验按账号告警及群白名单", () => {
+test("锅巴可以配置 S2A OAuth 账号额度告警", () => {
+  const updated = applyConfigUpdate(current, {
+    "alerts.accounts": [{ account: "openai:16", thresholdPercent: 20 }],
+  })
+  assert.deepEqual(updated.alerts.accounts, [{ account: "openai:16", thresholdPercent: 20 }])
+})
+
+test("校验 SLA 告警及群白名单", () => {
   const valid = {
     ...current,
     alerts: {
@@ -62,7 +64,7 @@ test("校验按账号告警及群白名单", () => {
       targetGroups: ["10001"],
       mentionMode: "users",
       mentionUsers: ["20001"],
-      accounts: [{ account: "codex:codex-a", thresholdPercent: 20 }],
+      sla: { enabled: true, thresholdPercent: 99.5, timeRange: "1h" },
     },
   }
   assert.doesNotThrow(() => validateConfig(valid))
@@ -70,33 +72,11 @@ test("校验按账号告警及群白名单", () => {
     () => validateConfig({ ...valid, alerts: { ...valid.alerts, targetGroups: ["10002"] } }),
     /目标群必须全部包含在群聊白名单/,
   )
-  assert.throws(
-    () =>
-      validateConfig({
-        ...valid,
-        alerts: {
-          ...valid.alerts,
-          accounts: [{ account: "codex:codex-a", thresholdPercent: 101 }],
-        },
-      }),
-    /阈值必须在 0 至 100/,
-  )
-  assert.throws(
-    () =>
-      validateConfig({
-        ...valid,
-        alerts: {
-          ...valid.alerts,
-          accounts: [{ account: "kimi:kimi-a", thresholdPercent: 20 }],
-        },
-      }),
-    /必须选择有效的 Codex 账号/,
-  )
 })
 
 test("拒绝无效配置", () => {
   assert.throws(
-    () => validateConfig({ ...current, cpa: { ...current.cpa, baseUrl: "file:///tmp/config" } }),
+    () => validateConfig({ ...current, s2a: { ...current.s2a, baseUrl: "file:///tmp/config" } }),
     /只支持 HTTP 或 HTTPS/,
   )
   assert.throws(
@@ -114,9 +94,54 @@ test("拒绝无效配置", () => {
       }),
     /SLA 告警阈值必须在 0 至 100/,
   )
+  assert.throws(
+    () =>
+      validateConfig({
+        ...current,
+        alerts: {
+          ...current.alerts,
+          accounts: [{ account: "openai:16", thresholdPercent: 101 }],
+        },
+      }),
+    /账号告警阈值必须在 0 至 100/,
+  )
+  assert.throws(
+    () =>
+      validateConfig({
+        ...current,
+        alerts: {
+          ...current.alerts,
+          accounts: [{ account: "codex:16", thresholdPercent: 20 }],
+        },
+      }),
+    /必须选择有效的 S2A OpenAI OAuth 账号/,
+  )
 })
 
-test("只启用 SLA 监控时不要求配置额度账号", () => {
+test("启用告警时必须配置额度账号或启用 SLA 监控", () => {
+  assert.throws(
+    () =>
+      validateConfig({
+        ...current,
+        alerts: {
+          ...current.alerts,
+          enabled: true,
+          targetGroups: ["10001"],
+        },
+      }),
+    /至少配置一个额度账号或启用 SLA 监控/,
+  )
+  assert.doesNotThrow(() =>
+    validateConfig({
+      ...current,
+      alerts: {
+        ...current.alerts,
+        enabled: true,
+        targetGroups: ["10001"],
+        accounts: [{ account: "openai:16", thresholdPercent: 20 }],
+      },
+    }),
+  )
   assert.doesNotThrow(() =>
     validateConfig({
       ...current,

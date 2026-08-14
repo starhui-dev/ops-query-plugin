@@ -69,14 +69,6 @@ body {
   --accent: #64ddb0;
 }
 
-.theme-s2a {
-  --accent: #72c8e8;
-}
-
-.theme-cpa {
-  --accent: #a6b0f0;
-}
-
 .theme-alert {
   --accent: #ff766f;
 }

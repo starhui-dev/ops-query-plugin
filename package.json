@@ -1,7 +1,7 @@
 {
   "name": "ops-query-plugin",
   "version": "0.1.0",
-  "description": "TRSS Yunzai plugin for querying CPA quotas and S2A channel status",
+  "description": "TRSS Yunzai plugin for querying S2A Codex quotas, channel status and SLA",
   "type": "module",
   "author": "RealHeart",
   "license": "GPL-3.0-only",
@@ -16,7 +16,6 @@
   "keywords": [
     "trss-yunzai",
     "yunzai",
-    "cliproxyapi",
     "sub2api",
     "codex"
   ],

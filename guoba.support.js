@@ -1,5 +1,5 @@
 import { getGuobaConfig, loadConfig, updateConfig } from "./lib/config.js"
-import { listCpaQuotaAccounts } from "./lib/cpa.js"
+import { listS2aQuotaAccountOptions } from "./lib/s2a-quota.js"
 
 const accountOptions = []
 await refreshAccountOptions()
@@ -14,38 +14,12 @@ export function supportGuoba() {
       isV3: true,
       isV2: false,
       showInMenu: true,
-      description: "查询 CPA 凭据与额度、S2A 渠道状态",
+      description: "查询 S2A Codex 额度、渠道状态和 SLA",
       icon: "mdi:server-network",
       iconColor: "#287a6d",
     },
     configInfo: {
       schemas: [
-        {
-          label: "CPA 配置",
-          component: "SOFT_GROUP_BEGIN",
-        },
-        {
-          field: "cpa.baseUrl",
-          label: "服务地址",
-          bottomHelpMessage: "CLIProxyAPI 地址，例如 https://cpa.example.com",
-          component: "Input",
-          componentProps: { placeholder: "请输入 CPA 服务地址" },
-        },
-        {
-          field: "cpa.managementKey",
-          label: "Management Key",
-          bottomHelpMessage: "留空保存会保留当前密钥",
-          component: "InputPassword",
-          componentProps: { placeholder: "留空表示不修改" },
-        },
-        {
-          field: "cpa.timeoutMs",
-          label: "请求超时",
-          bottomHelpMessage: "单个 HTTP 请求的超时时间，单位为毫秒",
-          component: "InputNumber",
-          required: true,
-          componentProps: { min: 1000, max: 60000, step: 1000 },
-        },
         {
           label: "S2A 配置",
           component: "SOFT_GROUP_BEGIN",
@@ -92,7 +66,7 @@ export function supportGuoba() {
         {
           field: "display.timeZone",
           label: "显示时区",
-          bottomHelpMessage: "用于额度重置时间，例如 Asia/Shanghai",
+          bottomHelpMessage: "用于状态和告警时间，例如 Asia/Shanghai",
           component: "Input",
           required: true,
           componentProps: { placeholder: "Asia/Shanghai" },
@@ -127,7 +101,7 @@ export function supportGuoba() {
         {
           field: "alerts.intervalMinutes",
           label: "检查间隔",
-          bottomHelpMessage: "每隔多少分钟检查一次账号额度与 Sub2API SLA",
+          bottomHelpMessage: "每隔多少分钟检查一次 Codex 额度与 Sub2API SLA",
           component: "InputNumber",
           required: true,
           componentProps: { min: 1, max: 1440, step: 1 },
@@ -161,7 +135,7 @@ export function supportGuoba() {
         {
           field: "alerts.accounts",
           label: "监控账号",
-          bottomHelpMessage: "每个 Codex 账号可设置独立的剩余额度阈值",
+          bottomHelpMessage: "每个 S2A Codex OAuth 账号可设置独立的剩余额度阈值",
           component: "GSubForm",
           componentProps: {
             multiple: true,
@@ -174,7 +148,7 @@ export function supportGuoba() {
                 required: true,
                 componentProps: {
                   options: accountOptions,
-                  placeholder: "请选择 CPA 账号",
+                  placeholder: "请选择 S2A OAuth 账号",
                   showSearch: true,
                   optionFilterProp: "label",
                 },
@@ -182,7 +156,7 @@ export function supportGuoba() {
               {
                 field: "thresholdPercent",
                 label: "告警阈值",
-                bottomHelpMessage: "剩余额度低于此百分比时告警",
+                bottomHelpMessage: "任一额度窗口剩余低于此百分比时告警",
                 component: "InputNumber",
                 required: true,
                 componentProps: { min: 0, max: 100, step: 1, addonAfter: "%" },
@@ -226,7 +200,7 @@ export function supportGuoba() {
       async setConfigData(data, { Result }) {
         try {
           const config = updateConfig(data)
-          await refreshAccountOptions(config.cpa)
+          await refreshAccountOptions(config.s2a)
           return Result.ok({}, "保存成功")
         } catch (error) {
           return Result.error(error instanceof Error ? error.message : String(error))
@@ -236,10 +210,9 @@ export function supportGuoba() {
   }
 }
 
-async function refreshAccountOptions(cpaConfig) {
+async function refreshAccountOptions(s2aConfig) {
   try {
-    const config = cpaConfig ?? loadConfig().cpa
-    const options = await listCpaQuotaAccounts(config)
+    const options = await listS2aQuotaAccountOptions(s2aConfig ?? loadConfig().s2a)
     accountOptions.splice(0, accountOptions.length, ...options)
   } catch {
     accountOptions.splice(0, accountOptions.length)

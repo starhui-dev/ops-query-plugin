@@ -1,14 +1,12 @@
 import { loadConfig } from "../lib/config.js"
-import {
-  buildCpaQuotaImageData,
-  buildCpaStatusImageData,
-  formatCpaQuota,
-  formatCpaStatus,
-  queryCpaQuota,
-  queryCpaStatus,
-} from "../lib/cpa.js"
 import { buildS2aImageData, formatS2aForwardNodes, queryS2aMonitors } from "../lib/s2a.js"
 import { buildS2aV2ImageData, formatS2aV2ForwardNodes, queryS2aV2Monitor } from "../lib/s2a-v2.js"
+import {
+  buildS2aQuotaImageData,
+  formatS2aQuota,
+  queryS2aQuota,
+  queryS2aQuotaUsage,
+} from "../lib/s2a-quota.js"
 import {
   buildS2aSlaAlertImageData,
   evaluateS2aSlaAlert,
@@ -18,8 +16,8 @@ import {
 } from "../lib/s2a-sla.js"
 import { checkQueryAccess } from "../lib/access.js"
 import {
-  buildQuotaAlertImageData,
   buildMentionSegments,
+  buildQuotaAlertImageData,
   evaluateQuotaAlerts,
   formatQuotaAlerts,
   parseAlertAccount,
@@ -40,17 +38,13 @@ export class OpsQuery extends plugin {
   constructor() {
     super({
       name: "运维查询",
-      dsc: "查询 CPA Codex 额度、S2A 渠道状态和 SLA",
+      dsc: "查询 S2A Codex 额度、渠道状态和 SLA",
       event: "message",
       priority: 5000,
       rule: [
         {
-          reg: "^#?(Codex|CPA\\s*Codex)(额度|配额)$",
-          fnc: "cpaQuota",
-        },
-        {
-          reg: "^#?CPA状态$",
-          fnc: "cpaStatus",
+          reg: "^#?Codex(额度|配额)$",
+          fnc: "codexQuota",
         },
         {
           reg: "^#?(S2A状态|渠道状态)$",
@@ -83,8 +77,7 @@ export class OpsQuery extends plugin {
     return this.reply(
       [
         "运维查询",
-        "#Codex额度：查询 CPA Codex 账号额度",
-        "#CPA状态：查询 CPA 全部提供商凭据状态",
+        "#Codex额度：查询 S2A Codex OAuth 账号额度",
         "#S2A状态：查询 S2A 渠道监控",
         "#SLA：查询 Sub2API SLA",
         "#Codex雷达：获取 Codex 雷达最新速览图",
@@ -92,36 +85,22 @@ export class OpsQuery extends plugin {
     )
   }
 
-  async cpaStatus() {
+  async codexQuota() {
     if (!(await this.ensureAccess())) return false
     try {
       const config = loadConfig()
-      const report = await queryCpaStatus(config.cpa)
+      const results = await queryS2aQuota(config.s2a, config.display.timeZone)
+      if (!results.length) return this.reply("S2A 中没有可查询的 Codex OAuth 账号")
       const image = await renderStatusImage(
-        buildCpaStatusImageData(report, config.display.timeZone),
-        `cpa-status-${Date.now()}`,
-      )
-      return this.reply(image || formatCpaStatus(report))
-    } catch (error) {
-      logger.error(`[运维查询] CPA 状态查询失败：${error instanceof Error ? error.stack : error}`)
-      return this.reply(`CPA 状态查询失败：${safeError(error)}`)
-    }
-  }
-
-  async cpaQuota() {
-    if (!(await this.ensureAccess())) return false
-    try {
-      const config = loadConfig()
-      const results = await queryCpaQuota(config.cpa, config.display.timeZone)
-      if (!results.length) return this.reply("CPA 中没有可查询的 Codex 账号")
-      const image = await renderStatusImage(
-        buildCpaQuotaImageData(results, config.display.timeZone),
+        buildS2aQuotaImageData(results, config.display.timeZone),
         `codex-quota-${Date.now()}`,
       )
-      return this.reply(image || formatCpaQuota(results))
+      return this.reply(image || formatS2aQuota(results))
     } catch (error) {
-      logger.error(`[运维查询] CPA 查询失败：${error instanceof Error ? error.stack : error}`)
-      return this.reply(`CPA 查询失败：${safeError(error)}`)
+      logger.error(
+        `[运维查询] S2A Codex 额度查询失败：${error instanceof Error ? error.stack : error}`,
+      )
+      return this.reply(`S2A Codex 额度查询失败：${safeError(error)}`)
     }
   }
 
@@ -201,13 +180,12 @@ export class OpsQuery extends plugin {
   async checkQuotaAlerts(config) {
     if (!config.alerts.accounts.length) return
     try {
-      const authIndexes = config.alerts.accounts
+      const accountIds = config.alerts.accounts
         .map(parseAlertAccount)
         .filter(Boolean)
-        .map(account => account.authIndex)
-      if (!authIndexes.length) return
-      const results = await queryCpaQuota(config.cpa, config.display.timeZone, authIndexes)
-
+        .map(account => account.accountId)
+      if (!accountIds.length) return
+      const results = await queryS2aQuotaUsage(config.s2a, accountIds)
       const alerts = evaluateQuotaAlerts(config.alerts.accounts, results, quotaAlertStates)
       if (!alerts.length) return
       const image = await renderStatusImage(
@@ -216,7 +194,9 @@ export class OpsQuery extends plugin {
       )
       await this.sendAlert(config, image || formatQuotaAlerts(alerts))
     } catch (error) {
-      logger.error(`[运维查询] CPA 额度监控失败：${error instanceof Error ? error.stack : error}`)
+      logger.error(
+        `[运维查询] S2A Codex 额度监控失败：${error instanceof Error ? error.stack : error}`,
+      )
     }
   }
 
