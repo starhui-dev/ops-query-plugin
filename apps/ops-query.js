@@ -43,7 +43,7 @@ export class OpsQuery extends plugin {
       priority: 5000,
       rule: [
         {
-          reg: "^#?Codex(额度|配额)$",
+          reg: "^#?[Cc][Oo][Dd][Ee][Xx]\\s*(额度|配额)$",
           fnc: "codexQuota",
         },
         {
