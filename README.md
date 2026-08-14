@@ -112,6 +112,12 @@ V2 聚合指标处理。
 - [TRSS Yunzai](https://github.com/TimeRainStarSky/Yunzai)
 - [Sub2API](https://github.com/Wei-Shaw/sub2api)
 
+## 第三方字体
+
+图片模板使用未经修改的 HarmonyOS Sans SC Regular 和 Bold。字体版权归 Huawei Device
+Co., Ltd. 所有，并按 [HarmonyOS Sans Fonts License Agreement](resources/fonts/HarmonyOS_Sans_SC/LICENSE.txt)
+随本插件分发。
+
 ## 许可证
 
 本项目使用 [GNU General Public License v3.0](LICENSE)（`GPL-3.0-only`）。

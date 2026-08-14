@@ -20,7 +20,7 @@ body {
   padding: 0;
   background: transparent;
   color: var(--paper);
-  font-family: "LXGW WenKai", "Microsoft YaHei", sans-serif;
+  font-family: "HarmonyOS Sans SC", "Noto Sans CJK SC", "Microsoft YaHei", sans-serif;
   letter-spacing: 0;
 }
 
@@ -83,7 +83,7 @@ body {
 .definition span,
 .alert-state span,
 .report-footer {
-  font-family: "LXGW WenKai Mono", monospace;
+  font-family: "HarmonyOS Sans SC", "Noto Sans CJK SC", "Microsoft YaHei", sans-serif;
 }
 
 .kicker {
@@ -179,7 +179,7 @@ h1 {
 .sla-heading > div > strong {
   margin-top: 5px;
   color: var(--danger);
-  font-family: "LXGW WenKai Mono", monospace;
+  font-family: "HarmonyOS Sans SC", "Noto Sans CJK SC", "Microsoft YaHei", sans-serif;
   font-size: 46px;
   line-height: 1;
 }
@@ -214,7 +214,7 @@ h1 {
   gap: 20px;
   margin-top: 10px;
   color: var(--secondary);
-  font-family: "LXGW WenKai Mono", monospace;
+  font-family: "HarmonyOS Sans SC", "Noto Sans CJK SC", "Microsoft YaHei", sans-serif;
   font-size: 10px;
 }
 
@@ -254,7 +254,7 @@ h1 {
 .metric strong {
   margin-top: 7px;
   color: var(--paper);
-  font-family: "LXGW WenKai Mono", monospace;
+  font-family: "HarmonyOS Sans SC", "Noto Sans CJK SC", "Microsoft YaHei", sans-serif;
   font-size: 27px;
   line-height: 1;
 }

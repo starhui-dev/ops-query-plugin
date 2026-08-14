@@ -22,7 +22,7 @@ body {
   padding: 0;
   background: transparent;
   color: var(--paper);
-  font-family: "LXGW WenKai", "Microsoft YaHei", sans-serif;
+  font-family: "HarmonyOS Sans SC", "Noto Sans CJK SC", "Microsoft YaHei", sans-serif;
   letter-spacing: 0;
 }
 
@@ -95,7 +95,7 @@ body {
 .matrix-header,
 .model-header,
 .report-footer {
-  font-family: "LXGW WenKai Mono", monospace;
+  font-family: "HarmonyOS Sans SC", "Noto Sans CJK SC", "Microsoft YaHei", sans-serif;
 }
 
 .kicker,
@@ -135,7 +135,7 @@ h1 {
 
 .version-badge {
   padding: 5px 9px;
-  font-family: "LXGW WenKai Mono", monospace;
+  font-family: "HarmonyOS Sans SC", "Noto Sans CJK SC", "Microsoft YaHei", sans-serif;
   font-size: 13px;
   font-weight: 700;
 }
@@ -267,7 +267,7 @@ h1 {
 .summary-cell strong {
   margin-top: 7px;
   color: var(--tone-color, var(--paper));
-  font-family: "LXGW WenKai Mono", monospace;
+  font-family: "HarmonyOS Sans SC", "Noto Sans CJK SC", "Microsoft YaHei", sans-serif;
   font-size: 25px;
   line-height: 1;
 }
@@ -357,7 +357,7 @@ h1 {
 .matrix-row > strong {
   min-width: 0;
   padding: 0 9px;
-  font-family: "LXGW WenKai Mono", monospace;
+  font-family: "HarmonyOS Sans SC", "Noto Sans CJK SC", "Microsoft YaHei", sans-serif;
   font-size: 12px;
   overflow-wrap: anywhere;
 }
@@ -477,7 +477,7 @@ h1 {
 }
 
 .model-row strong {
-  font-family: "LXGW WenKai Mono", monospace;
+  font-family: "HarmonyOS Sans SC", "Noto Sans CJK SC", "Microsoft YaHei", sans-serif;
   font-size: 12px;
 }
 

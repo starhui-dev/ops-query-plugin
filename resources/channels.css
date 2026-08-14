@@ -21,7 +21,7 @@ body {
   padding: 0;
   background: transparent;
   color: var(--paper);
-  font-family: "LXGW WenKai", "Microsoft YaHei", sans-serif;
+  font-family: "HarmonyOS Sans SC", "Noto Sans CJK SC", "Microsoft YaHei", sans-serif;
   letter-spacing: 0;
 }
 
@@ -78,7 +78,7 @@ body {
 .status-bar span,
 .history-axis,
 .report-footer {
-  font-family: "LXGW WenKai Mono", monospace;
+  font-family: "HarmonyOS Sans SC", "Noto Sans CJK SC", "Microsoft YaHei", sans-serif;
 }
 
 .kicker {
@@ -182,7 +182,7 @@ h1 {
 .status-bar strong {
   margin-top: 5px;
   color: var(--tone-color, var(--paper));
-  font-family: "LXGW WenKai Mono", monospace;
+  font-family: "HarmonyOS Sans SC", "Noto Sans CJK SC", "Microsoft YaHei", sans-serif;
   font-size: 21px;
   line-height: 1.25;
 }
@@ -241,7 +241,7 @@ h2 {
 .channel-copy p {
   margin-top: 5px;
   color: var(--secondary);
-  font-family: "LXGW WenKai Mono", monospace;
+  font-family: "HarmonyOS Sans SC", "Noto Sans CJK SC", "Microsoft YaHei", sans-serif;
   font-size: 13px;
   line-height: 1.35;
   overflow-wrap: anywhere;
@@ -304,7 +304,7 @@ h2 {
 .metric strong {
   margin-top: 6px;
   color: var(--tone-color, var(--paper));
-  font-family: "LXGW WenKai Mono", monospace;
+  font-family: "HarmonyOS Sans SC", "Noto Sans CJK SC", "Microsoft YaHei", sans-serif;
   font-size: 21px;
 }
 
@@ -326,7 +326,7 @@ h2 {
 
 .history-heading small {
   color: var(--secondary);
-  font-family: "LXGW WenKai Mono", monospace;
+  font-family: "HarmonyOS Sans SC", "Noto Sans CJK SC", "Microsoft YaHei", sans-serif;
   font-size: 11px;
 }
 
