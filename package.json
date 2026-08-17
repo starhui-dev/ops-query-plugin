@@ -1,7 +1,7 @@
 {
   "name": "ops-query-plugin",
   "version": "0.1.0",
-  "description": "TRSS Yunzai plugin for querying S2A Codex quotas, channel status and SLA",
+  "description": "TRSS Yunzai plugin for S2A operations and Codex reset notifications",
   "type": "module",
   "author": "RealHeart",
   "license": "GPL-3.0-only",
@@ -30,6 +30,7 @@
     "test": "node --test"
   },
   "dependencies": {
+    "undici": "^6.28.0",
     "yaml": "^2.9.0"
   },
   "devDependencies": {

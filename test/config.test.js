@@ -3,6 +3,13 @@ import test from "node:test"
 import { applyConfigUpdate, validateConfig } from "../lib/config.js"
 
 const current = {
+  proxy: {
+    url: "http://user:password@127.0.0.1:7890",
+    s2aEnabled: false,
+    codexRadarEnabled: false,
+    codexResetsEnabled: false,
+    randomBackgroundEnabled: false,
+  },
   s2a: {
     baseUrl: "https://s2a.old",
     adminApiKey: "s2a-secret",
@@ -18,6 +25,7 @@ const current = {
     mentionMode: "none",
     mentionUsers: [],
     accounts: [],
+    codexResets: { enabled: false },
     sla: { enabled: false, thresholdPercent: 99.5, timeRange: "1h" },
   },
 }
@@ -27,6 +35,29 @@ test("锅巴留空 S2A 密钥时保留原值", () => {
     "s2a.adminApiKey": "",
   })
   assert.equal(updated.s2a.adminApiKey, "s2a-secret")
+})
+
+test("锅巴留空代理地址时保留原值", () => {
+  const updated = applyConfigUpdate(current, {
+    "proxy.url": "",
+  })
+  assert.equal(updated.proxy.url, "http://user:password@127.0.0.1:7890")
+})
+
+test("锅巴可以分别选择走代理的功能", () => {
+  const updated = applyConfigUpdate(current, {
+    "proxy.s2aEnabled": true,
+    "proxy.codexRadarEnabled": true,
+    "proxy.codexResetsEnabled": true,
+    "proxy.randomBackgroundEnabled": true,
+  })
+  assert.deepEqual(updated.proxy, {
+    ...current.proxy,
+    s2aEnabled: true,
+    codexRadarEnabled: true,
+    codexResetsEnabled: true,
+    randomBackgroundEnabled: true,
+  })
 })
 
 test("锅巴可以切换 S2A 监控版本", () => {
@@ -54,6 +85,13 @@ test("锅巴可以配置 S2A OAuth 账号额度告警", () => {
   assert.deepEqual(updated.alerts.accounts, [{ account: "openai:16", thresholdPercent: 20 }])
 })
 
+test("锅巴可以配置 Codex 重置订阅", () => {
+  const updated = applyConfigUpdate(current, {
+    "alerts.codexResets.enabled": true,
+  })
+  assert.deepEqual(updated.alerts.codexResets, { enabled: true })
+})
+
 test("校验 SLA 告警及群白名单", () => {
   const valid = {
     ...current,
@@ -75,6 +113,29 @@ test("校验 SLA 告警及群白名单", () => {
 })
 
 test("拒绝无效配置", () => {
+  for (const field of [
+    "s2aEnabled",
+    "codexRadarEnabled",
+    "codexResetsEnabled",
+    "randomBackgroundEnabled",
+  ]) {
+    assert.throws(
+      () =>
+        validateConfig({
+          ...current,
+          proxy: { ...current.proxy, url: "", [field]: true },
+        }),
+      /启用代理功能前必须填写代理地址/,
+    )
+  }
+  assert.throws(
+    () =>
+      validateConfig({
+        ...current,
+        proxy: { ...current.proxy, url: "socks5://127.0.0.1:7890" },
+      }),
+    /代理只支持 HTTP 或 HTTPS/,
+  )
   assert.throws(
     () => validateConfig({ ...current, s2a: { ...current.s2a, baseUrl: "file:///tmp/config" } }),
     /只支持 HTTP 或 HTTPS/,
@@ -118,7 +179,7 @@ test("拒绝无效配置", () => {
   )
 })
 
-test("启用告警时必须配置额度账号或启用 SLA 监控", () => {
+test("启用告警时必须配置额度账号、Codex 重置订阅或 SLA 监控", () => {
   assert.throws(
     () =>
       validateConfig({
@@ -129,7 +190,18 @@ test("启用告警时必须配置额度账号或启用 SLA 监控", () => {
           targetGroups: ["10001"],
         },
       }),
-    /至少配置一个额度账号或启用 SLA 监控/,
+    /至少配置一个额度账号、Codex 重置订阅或 SLA 监控/,
+  )
+  assert.doesNotThrow(() =>
+    validateConfig({
+      ...current,
+      alerts: {
+        ...current.alerts,
+        enabled: true,
+        targetGroups: ["10001"],
+        codexResets: { enabled: true },
+      },
+    }),
   )
   assert.doesNotThrow(() =>
     validateConfig({
@@ -152,5 +224,21 @@ test("启用告警时必须配置额度账号或启用 SLA 监控", () => {
         sla: { enabled: true, thresholdPercent: 99.5, timeRange: "1h" },
       },
     }),
+  )
+})
+
+test("校验旧版配置对象时兼容缺失的 Codex 重置订阅字段", () => {
+  const { codexResets: _codexResets, ...legacyAlerts } = current.alerts
+  assert.throws(
+    () =>
+      validateConfig({
+        ...current,
+        alerts: {
+          ...legacyAlerts,
+          enabled: true,
+          targetGroups: ["10001"],
+        },
+      }),
+    /至少配置一个额度账号、Codex 重置订阅或 SLA 监控/,
   )
 })

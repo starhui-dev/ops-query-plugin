@@ -20,6 +20,20 @@ test("从速览区块解析最新 Codex 雷达图片地址", () => {
   )
 })
 
+test("兼容 Codex 雷达当前使用的站速览图图注", () => {
+  const html = `
+    <figure class="model-iq-readout">
+      <img src="assets/radar-current.png?v=20260817-0821-readout">
+      <figcaption>Codex 站速览图更新时间：8月17日 08:21</figcaption>
+    </figure>
+  `
+
+  assert.equal(
+    parseCodexRadarImageUrl(html),
+    "https://codexradar.com/assets/radar-current.png?v=20260817-0821-readout",
+  )
+})
+
 test("拒绝速览区块中的站外图片地址", () => {
   const html = `
     <figure class="model-iq-readout">
@@ -45,7 +59,7 @@ test("下载页面指向的最新速览图片", async () => {
     return response("png bytes", "image/png", String(url))
   }
 
-  const image = await fetchLatestCodexRadarImage(fetchImpl)
+  const image = await fetchLatestCodexRadarImage({}, fetchImpl)
 
   assert.deepEqual(calls, [
     PAGE_URL,
@@ -66,7 +80,28 @@ test("拒绝非图片类型的速览资源", async () => {
     return response("not an image", "text/plain", String(url))
   }
 
-  await assert.rejects(fetchLatestCodexRadarImage(fetchImpl), /返回类型异常/)
+  await assert.rejects(fetchLatestCodexRadarImage({}, fetchImpl), /返回类型异常/)
+})
+
+test("Codex 雷达页面和图片请求共用功能代理", async () => {
+  const dispatchers = []
+  const fetchImpl = async (url, options) => {
+    dispatchers.push(options.dispatcher)
+    if (String(url) === PAGE_URL) {
+      return response(
+        `<figure class="model-iq-readout"><img src="assets/radar.png"><figcaption>雷达速览图更新时间：现在</figcaption></figure>`,
+        "text/html",
+        PAGE_URL,
+      )
+    }
+    return response("png bytes", "image/png", String(url))
+  }
+
+  await fetchLatestCodexRadarImage({ enabled: true, url: "http://127.0.0.1:7890" }, fetchImpl)
+
+  assert.equal(dispatchers.length, 2)
+  assert.equal(dispatchers[0]?.constructor.name, "ProxyAgent")
+  assert.equal(dispatchers[0], dispatchers[1])
 })
 
 function response(body, contentType, url) {

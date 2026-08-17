@@ -4,6 +4,13 @@ s2a:
   timeoutMs: 10000
   monitorVersion: v1
 
+proxy:
+  url: ""
+  s2aEnabled: false
+  codexRadarEnabled: false
+  codexResetsEnabled: false
+  randomBackgroundEnabled: false
+
 display:
   timeZone: "Asia/Shanghai"
 
@@ -18,6 +25,8 @@ alerts:
   mentionMode: "none"
   mentionUsers: []
   accounts: []
+  codexResets:
+    enabled: false
   sla:
     enabled: false
     thresholdPercent: 99.5

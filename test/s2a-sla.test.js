@@ -7,6 +7,7 @@ import {
   formatS2aSlaOverview,
   queryS2aSla,
 } from "../lib/s2a-sla.js"
+import { withProxy } from "../lib/proxy.js"
 
 function overview(overrides = {}) {
   return {
@@ -115,4 +116,28 @@ test("S2A SLA 查询使用官方 Ops 概览接口", async () => {
   } finally {
     globalThis.fetch = originalFetch
   }
+})
+
+test("S2A 查询可以使用功能代理", async () => {
+  let dispatcher
+  const fetchImpl = async (_url, options) => {
+    dispatcher = options.dispatcher
+    return new Response(
+      JSON.stringify({ code: 0, message: "success", data: overview({ sla: 1 }) }),
+      { status: 200, headers: { "content-type": "application/json" } },
+    )
+  }
+
+  await withProxy(
+    { enabled: true, url: "http://127.0.0.1:7890" },
+    requestFetch =>
+      queryS2aSla(
+        { baseUrl: "https://s2a.example.com", adminApiKey: "secret", timeoutMs: 10000 },
+        "1h",
+        requestFetch,
+      ),
+    fetchImpl,
+  )
+
+  assert.equal(dispatcher?.constructor.name, "ProxyAgent")
 })

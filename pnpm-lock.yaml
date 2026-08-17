@@ -7,6 +7,9 @@ settings:
 importers:
   .:
     dependencies:
+      undici:
+        specifier: ^6.28.0
+        version: 6.28.0
       yaml:
         specifier: ^2.9.0
         version: 2.9.0
@@ -24,6 +27,13 @@ packages:
     engines: { node: ">=14" }
     hasBin: true
 
+  undici@6.28.0:
+    resolution:
+      {
+        integrity: sha512-LIY910g9TI13YS95lrMFrs8Rm/u/irgHeTWoKCoteeJ04CUJ92eEfj0rVn+7VKMPBpUPiUoBKfhNyLI23EE/KA==,
+      }
+    engines: { node: ">=18.17" }
+
   yaml@2.9.0:
     resolution:
       {
@@ -34,5 +44,7 @@ packages:
 
 snapshots:
   prettier@3.9.6: {}
+
+  undici@6.28.0: {}
 
   yaml@2.9.0: {}

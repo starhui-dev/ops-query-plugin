@@ -1,4 +1,5 @@
 import { getGuobaConfig, loadConfig, updateConfig } from "./lib/config.js"
+import { selectProxy, withProxy } from "./lib/proxy.js"
 import { listS2aQuotaAccountOptions } from "./lib/s2a-quota.js"
 
 const accountOptions = []
@@ -14,7 +15,7 @@ export function supportGuoba() {
       isV3: true,
       isV2: false,
       showInMenu: true,
-      description: "查询 S2A Codex 额度、渠道状态和 SLA",
+      description: "查询 S2A Codex 额度、渠道状态、SLA 和 Codex 重置动态",
       icon: "mdi:server-network",
       iconColor: "#287a6d",
     },
@@ -60,6 +61,41 @@ export function supportGuoba() {
           componentProps: { min: 1000, max: 60000, step: 1000 },
         },
         {
+          label: "代理设置",
+          component: "SOFT_GROUP_BEGIN",
+        },
+        {
+          field: "proxy.url",
+          label: "代理地址",
+          bottomHelpMessage: "支持 HTTP/HTTPS；可包含认证信息，留空保存会保留当前地址",
+          component: "InputPassword",
+          componentProps: { placeholder: "例如 http://127.0.0.1:7890" },
+        },
+        {
+          field: "proxy.s2aEnabled",
+          label: "S2A 查询与告警",
+          bottomHelpMessage: "S2A 额度、渠道状态、SLA、账号列表和相关告警走代理",
+          component: "Switch",
+        },
+        {
+          field: "proxy.codexRadarEnabled",
+          label: "Codex 雷达",
+          bottomHelpMessage: "Codex 雷达页面和速览图下载走代理",
+          component: "Switch",
+        },
+        {
+          field: "proxy.codexResetsEnabled",
+          label: "Codex 重置",
+          bottomHelpMessage: "Codex 重置手动查询和订阅检查走代理",
+          component: "Switch",
+        },
+        {
+          field: "proxy.randomBackgroundEnabled",
+          label: "随机背景图",
+          bottomHelpMessage: "状态图的随机背景下载走代理",
+          component: "Switch",
+        },
+        {
           label: "显示配置",
           component: "SOFT_GROUP_BEGIN",
         },
@@ -95,13 +131,13 @@ export function supportGuoba() {
         },
         {
           field: "alerts.enabled",
-          label: "启用告警",
+          label: "启用告警与订阅",
           component: "Switch",
         },
         {
           field: "alerts.intervalMinutes",
           label: "检查间隔",
-          bottomHelpMessage: "每隔多少分钟检查一次 Codex 额度与 Sub2API SLA",
+          bottomHelpMessage: "每隔多少分钟检查一次 Codex 额度、重置订阅与 Sub2API SLA",
           component: "InputNumber",
           required: true,
           componentProps: { min: 1, max: 1440, step: 1 },
@@ -165,6 +201,12 @@ export function supportGuoba() {
           },
         },
         {
+          field: "alerts.codexResets.enabled",
+          label: "Codex 重置订阅",
+          bottomHelpMessage: "发现新的已确认 Codex 重置公告时推送到告警群聊",
+          component: "Switch",
+        },
+        {
           field: "alerts.sla.enabled",
           label: "SLA 监控",
           bottomHelpMessage: "监控 Sub2API Ops SLA；业务限制类错误不会计入异常",
@@ -200,7 +242,7 @@ export function supportGuoba() {
       async setConfigData(data, { Result }) {
         try {
           const config = updateConfig(data)
-          await refreshAccountOptions(config.s2a)
+          await refreshAccountOptions(config)
           return Result.ok({}, "保存成功")
         } catch (error) {
           return Result.error(error instanceof Error ? error.message : String(error))
@@ -210,9 +252,12 @@ export function supportGuoba() {
   }
 }
 
-async function refreshAccountOptions(s2aConfig) {
+async function refreshAccountOptions(config) {
   try {
-    const options = await listS2aQuotaAccountOptions(s2aConfig ?? loadConfig().s2a)
+    const current = config ?? loadConfig()
+    const options = await withProxy(selectProxy(current.proxy, "s2a"), fetchImpl =>
+      listS2aQuotaAccountOptions(current.s2a, fetchImpl),
+    )
     accountOptions.splice(0, accountOptions.length, ...options)
   } catch {
     accountOptions.splice(0, accountOptions.length)

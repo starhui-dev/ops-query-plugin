@@ -29,6 +29,15 @@ import {
   renderStatusImage,
 } from "../lib/render.js"
 import { fetchLatestCodexRadarImage } from "../lib/codex-radar.js"
+import {
+  evaluateCodexResetNotification,
+  formatCodexResetNotification,
+  formatCodexResetStatus,
+  loadCodexResetState,
+  queryCodexResetStatus,
+  saveCodexResetState,
+} from "../lib/codex-resets.js"
+import { selectProxy, withProxy } from "../lib/proxy.js"
 
 const quotaAlertStates = new Map()
 const slaAlertStates = new Map()
@@ -38,7 +47,7 @@ export class OpsQuery extends plugin {
   constructor() {
     super({
       name: "运维查询",
-      dsc: "查询 S2A Codex 额度、渠道状态和 SLA",
+      dsc: "查询 S2A Codex 额度、渠道状态、SLA 和 Codex 重置动态",
       event: "message",
       priority: 5000,
       rule: [
@@ -57,6 +66,10 @@ export class OpsQuery extends plugin {
         {
           reg: "^#?Codex雷达$",
           fnc: "codexRadar",
+        },
+        {
+          reg: "^#?[Cc][Oo][Dd][Ee][Xx]\\s*重置$",
+          fnc: "codexReset",
         },
         {
           reg: "^#?运维查询帮助$",
@@ -81,6 +94,7 @@ export class OpsQuery extends plugin {
         "#S2A状态：查询 S2A 渠道监控",
         "#SLA：查询 Sub2API SLA",
         "#Codex雷达：获取 Codex 雷达最新速览图",
+        "#Codex重置：查询最新 Codex 重置公告",
       ].join("\n"),
     )
   }
@@ -89,11 +103,14 @@ export class OpsQuery extends plugin {
     if (!(await this.ensureAccess())) return false
     try {
       const config = loadConfig()
-      const results = await queryS2aQuota(config.s2a, config.display.timeZone)
+      const results = await withProxy(selectProxy(config.proxy, "s2a"), fetchImpl =>
+        queryS2aQuota(config.s2a, config.display.timeZone, [], fetchImpl),
+      )
       if (!results.length) return this.reply("S2A 中没有可查询的 Codex OAuth 账号")
       const image = await renderStatusImage(
         buildS2aQuotaImageData(results, config.display.timeZone),
         `codex-quota-${Date.now()}`,
+        selectProxy(config.proxy, "randomBackground"),
       )
       return this.reply(image || formatS2aQuota(results))
     } catch (error) {
@@ -109,20 +126,26 @@ export class OpsQuery extends plugin {
     try {
       const config = loadConfig()
       if (config.s2a.monitorVersion === "v2") {
-        const report = await queryS2aV2Monitor(config.s2a)
+        const report = await withProxy(selectProxy(config.proxy, "s2a"), fetchImpl =>
+          queryS2aV2Monitor(config.s2a, fetchImpl),
+        )
         const image = await renderChannelsV2Image(
           buildS2aV2ImageData(report, config.display.timeZone),
           `s2a-status-v2-${Date.now()}`,
+          selectProxy(config.proxy, "randomBackground"),
         )
         if (image) return this.reply(image)
         return this.reply(
           Bot.makeForwardArray(formatS2aV2ForwardNodes(report, config.display.timeZone)),
         )
       }
-      const monitors = await queryS2aMonitors(config.s2a)
+      const monitors = await withProxy(selectProxy(config.proxy, "s2a"), fetchImpl =>
+        queryS2aMonitors(config.s2a, fetchImpl),
+      )
       const image = await renderChannelsImage(
         buildS2aImageData(monitors, config.display.timeZone),
         `s2a-status-${Date.now()}`,
+        selectProxy(config.proxy, "randomBackground"),
       )
       if (image) return this.reply(image)
       return this.reply(
@@ -139,7 +162,9 @@ export class OpsQuery extends plugin {
     try {
       const config = loadConfig()
       const timeRange = config.alerts.sla.timeRange
-      const overview = await queryS2aSla(config.s2a, timeRange)
+      const overview = await withProxy(selectProxy(config.proxy, "s2a"), fetchImpl =>
+        queryS2aSla(config.s2a, timeRange, fetchImpl),
+      )
       return this.reply(formatS2aSlaOverview(overview, timeRange, config.display.timeZone))
     } catch (error) {
       logger.error(`[运维查询] S2A SLA 查询失败：${error instanceof Error ? error.stack : error}`)
@@ -150,13 +175,26 @@ export class OpsQuery extends plugin {
   async codexRadar() {
     if (!(await this.ensureAccess())) return false
     try {
-      const image = await fetchLatestCodexRadarImage()
+      const config = loadConfig()
+      const image = await fetchLatestCodexRadarImage(selectProxy(config.proxy, "codexRadar"))
       return this.reply(segment.image(image))
     } catch (error) {
       logger.error(
         `[运维查询] Codex 雷达速览图获取失败：${error instanceof Error ? error.stack : error}`,
       )
       return this.reply(`Codex 雷达速览图获取失败：${safeError(error)}`)
+    }
+  }
+
+  async codexReset() {
+    if (!(await this.ensureAccess())) return false
+    try {
+      const config = loadConfig()
+      const status = await queryCodexResetStatus(selectProxy(config.proxy, "codexResets"))
+      return this.reply(formatCodexResetStatus(status, config.display.timeZone))
+    } catch (error) {
+      logger.error(`[运维查询] Codex 重置查询失败：${error instanceof Error ? error.stack : error}`)
+      return this.reply(`Codex 重置查询失败：${safeError(error)}`)
     }
   }
 
@@ -174,7 +212,11 @@ export class OpsQuery extends plugin {
     if (now - lastAlertCheckAt < config.alerts.intervalMinutes * 60000) return
     lastAlertCheckAt = now
 
-    await Promise.all([this.checkQuotaAlerts(config), this.checkSlaAlert(config)])
+    await Promise.all([
+      this.checkQuotaAlerts(config),
+      this.checkCodexResetAlert(config),
+      this.checkSlaAlert(config),
+    ])
   }
 
   async checkQuotaAlerts(config) {
@@ -185,12 +227,15 @@ export class OpsQuery extends plugin {
         .filter(Boolean)
         .map(account => account.accountId)
       if (!accountIds.length) return
-      const results = await queryS2aQuotaUsage(config.s2a, accountIds)
+      const results = await withProxy(selectProxy(config.proxy, "s2a"), fetchImpl =>
+        queryS2aQuotaUsage(config.s2a, accountIds, fetchImpl),
+      )
       const alerts = evaluateQuotaAlerts(config.alerts.accounts, results, quotaAlertStates)
       if (!alerts.length) return
       const image = await renderStatusImage(
         buildQuotaAlertImageData(alerts, config.display.timeZone),
         `quota-alert-${Date.now()}`,
+        selectProxy(config.proxy, "randomBackground"),
       )
       await this.sendAlert(config, image || formatQuotaAlerts(alerts))
     } catch (error) {
@@ -203,16 +248,44 @@ export class OpsQuery extends plugin {
   async checkSlaAlert(config) {
     if (!config.alerts.sla.enabled) return
     try {
-      const overview = await queryS2aSla(config.s2a, config.alerts.sla.timeRange)
+      const overview = await withProxy(selectProxy(config.proxy, "s2a"), fetchImpl =>
+        queryS2aSla(config.s2a, config.alerts.sla.timeRange, fetchImpl),
+      )
       const alert = evaluateS2aSlaAlert(config.alerts.sla, overview, slaAlertStates)
       if (!alert) return
       const image = await renderSlaAlertImage(
         buildS2aSlaAlertImageData(alert, config.display.timeZone),
         `s2a-sla-alert-${Date.now()}`,
+        selectProxy(config.proxy, "randomBackground"),
       )
       await this.sendAlert(config, image || formatS2aSlaAlert(alert))
     } catch (error) {
       logger.error(`[运维查询] S2A SLA 监控失败：${error instanceof Error ? error.stack : error}`)
+    }
+  }
+
+  async checkCodexResetAlert(config) {
+    if (!config.alerts.codexResets.enabled) return
+    try {
+      const status = await queryCodexResetStatus(selectProxy(config.proxy, "codexResets"))
+      const state = loadCodexResetState()
+      const decision = evaluateCodexResetNotification(status, state.latestResetId)
+      if (!decision.notification) {
+        if (decision.latestResetId && decision.latestResetId !== state.latestResetId) {
+          saveCodexResetState(decision.latestResetId)
+        }
+        return
+      }
+
+      await this.sendAlert(
+        config,
+        formatCodexResetNotification(decision.notification, config.display.timeZone),
+      )
+      saveCodexResetState(decision.latestResetId)
+    } catch (error) {
+      logger.error(
+        `[运维查询] Codex 重置订阅检查失败：${error instanceof Error ? error.stack : error}`,
+      )
     }
   }
 
