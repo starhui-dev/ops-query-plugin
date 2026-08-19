@@ -121,9 +121,10 @@ export function supportGuoba() {
         {
           field: "access.queryUsers",
           label: "可查询人员",
-          bottomHelpMessage: "普通用户必须在此名单中；主人不受限制",
-          component: "GSelectFriend",
-          componentProps: { placeholder: "请选择允许查询的用户" },
+          bottomHelpMessage:
+            "填写 QQ 号，无需是好友；留空表示不限制人员，但只在白名单群内响应，私聊不可用",
+          component: "GTags",
+          componentProps: { allowAdd: true, allowDel: true },
         },
         {
           label: "告警配置",

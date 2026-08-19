@@ -20,7 +20,8 @@
 - 按统计窗口监控 Sub2API SLA，排除余额不足、配额超限等业务限制，低于阈值时发送
   图片告警。
 - 查询当前统计窗口内的 Sub2API SLA、成功请求和异常明细。
-- 配置群聊白名单和可查询人员；Yunzai 主人可绕过全部查询限制。
+- 配置群聊白名单和可查询人员，人员留空表示白名单群内不限人，私聊不可用；Yunzai
+  主人可绕过全部查询限制。
 - 可按功能选择 S2A、Codex 雷达、Codex 重置和随机背景请求是否走 HTTP/HTTPS 代理。
 - 支持锅巴插件管理器，也可直接维护 YAML 配置。
 
@@ -73,19 +74,19 @@ OpenAI OAuth 账号的额度来自 Sub2API 的额度接口，实时查询；Anth
 
 配置模板位于 [`config/config.example.yaml`](config/config.example.yaml)，主要配置项如下：
 
-| 配置项                  | 说明                                   |
-| ----------------------- | -------------------------------------- |
-| `s2a.baseUrl`           | Sub2API 服务地址                       |
-| `s2a.adminApiKey`       | Sub2API Admin API Key                  |
-| `s2a.monitorVersion`    | 渠道监控版本，可选 `v1` 或 `v2`        |
-| `display.timeZone`      | 状态和告警更新时间所用时区             |
-| `access.groupWhitelist` | 普通用户可使用插件的群聊               |
-| `access.queryUsers`     | 可执行查询的普通用户                   |
-| `proxy.*`               | HTTP/HTTPS 代理地址和功能开关          |
-| `alerts.*`              | 告警与订阅总开关、周期、群聊及提醒方式 |
-| `alerts.accounts`       | S2A 额度账号及其额度告警阈值           |
-| `alerts.codexResets.*`  | Codex 重置公告订阅开关                 |
-| `alerts.sla.*`          | Sub2API SLA 开关、统计窗口和最低阈值   |
+| 配置项                  | 说明                                     |
+| ----------------------- | ---------------------------------------- |
+| `s2a.baseUrl`           | Sub2API 服务地址                         |
+| `s2a.adminApiKey`       | Sub2API Admin API Key                    |
+| `s2a.monitorVersion`    | 渠道监控版本，可选 `v1` 或 `v2`          |
+| `display.timeZone`      | 状态和告警更新时间所用时区               |
+| `access.groupWhitelist` | 普通用户可使用插件的群聊                 |
+| `access.queryUsers`     | 可执行查询的普通用户，留空只放开白名单群 |
+| `proxy.*`               | HTTP/HTTPS 代理地址和功能开关            |
+| `alerts.*`              | 告警与订阅总开关、周期、群聊及提醒方式   |
+| `alerts.accounts`       | S2A 额度账号及其额度告警阈值             |
+| `alerts.codexResets.*`  | Codex 重置公告订阅开关                   |
+| `alerts.sla.*`          | Sub2API SLA 开关、统计窗口和最低阈值     |
 
 告警目标群必须同时存在于群聊白名单。相同账号持续低于阈值时只提醒一次，额度恢复到
 阈值以上后再次降低才会重新提醒。额度告警与 `#S2A额度` 使用同一份采集逻辑，按账号
