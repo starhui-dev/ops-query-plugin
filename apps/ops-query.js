@@ -1,12 +1,7 @@
 import { loadConfig } from "../lib/config.js"
 import { buildS2aImageData, formatS2aForwardNodes, queryS2aMonitors } from "../lib/s2a.js"
 import { buildS2aV2ImageData, formatS2aV2ForwardNodes, queryS2aV2Monitor } from "../lib/s2a-v2.js"
-import {
-  buildS2aQuotaImageData,
-  formatS2aQuota,
-  queryS2aQuota,
-  queryS2aQuotaUsage,
-} from "../lib/s2a-quota.js"
+import { buildS2aQuotaImageData, formatS2aQuota, queryS2aQuota } from "../lib/s2a-quota.js"
 import {
   buildS2aSlaAlertImageData,
   evaluateS2aSlaAlert,
@@ -47,13 +42,13 @@ export class OpsQuery extends plugin {
   constructor() {
     super({
       name: "运维查询",
-      dsc: "查询 S2A Codex 额度、渠道状态、SLA 和 Codex 重置动态",
+      dsc: "查询 S2A 账号额度、渠道状态、SLA 和 Codex 重置动态",
       event: "message",
       priority: 5000,
       rule: [
         {
-          reg: "^#?[Cc][Oo][Dd][Ee][Xx]\\s*(额度|配额)$",
-          fnc: "codexQuota",
+          reg: "^#?[Ss]2[Aa]\\s*(额度|配额)$",
+          fnc: "s2aQuota",
         },
         {
           reg: "^#?(S2A状态|渠道状态)$",
@@ -90,7 +85,7 @@ export class OpsQuery extends plugin {
     return this.reply(
       [
         "运维查询",
-        "#Codex额度：查询 S2A Codex OAuth 账号额度",
+        "#S2A额度：查询 S2A 各平台账号额度",
         "#S2A状态：查询 S2A 渠道监控",
         "#SLA：查询 Sub2API SLA",
         "#Codex雷达：获取 Codex 雷达最新速览图",
@@ -99,25 +94,23 @@ export class OpsQuery extends plugin {
     )
   }
 
-  async codexQuota() {
+  async s2aQuota() {
     if (!(await this.ensureAccess())) return false
     try {
       const config = loadConfig()
       const results = await withProxy(selectProxy(config.proxy, "s2a"), fetchImpl =>
         queryS2aQuota(config.s2a, config.display.timeZone, [], fetchImpl),
       )
-      if (!results.length) return this.reply("S2A 中没有可查询的 Codex OAuth 账号")
+      if (!results.length) return this.reply("S2A 中没有可查询额度的账号")
       const image = await renderStatusImage(
         buildS2aQuotaImageData(results, config.display.timeZone),
-        `codex-quota-${Date.now()}`,
+        `s2a-quota-${Date.now()}`,
         selectProxy(config.proxy, "randomBackground"),
       )
       return this.reply(image || formatS2aQuota(results))
     } catch (error) {
-      logger.error(
-        `[运维查询] S2A Codex 额度查询失败：${error instanceof Error ? error.stack : error}`,
-      )
-      return this.reply(`S2A Codex 额度查询失败：${safeError(error)}`)
+      logger.error(`[运维查询] S2A 额度查询失败：${error instanceof Error ? error.stack : error}`)
+      return this.reply(`S2A 额度查询失败：${safeError(error)}`)
     }
   }
 
@@ -228,7 +221,7 @@ export class OpsQuery extends plugin {
         .map(account => account.accountId)
       if (!accountIds.length) return
       const results = await withProxy(selectProxy(config.proxy, "s2a"), fetchImpl =>
-        queryS2aQuotaUsage(config.s2a, accountIds, fetchImpl),
+        queryS2aQuota(config.s2a, config.display.timeZone, accountIds, fetchImpl),
       )
       const alerts = evaluateQuotaAlerts(config.alerts.accounts, results, quotaAlertStates)
       if (!alerts.length) return
@@ -239,9 +232,7 @@ export class OpsQuery extends plugin {
       )
       await this.sendAlert(config, image || formatQuotaAlerts(alerts))
     } catch (error) {
-      logger.error(
-        `[运维查询] S2A Codex 额度监控失败：${error instanceof Error ? error.stack : error}`,
-      )
+      logger.error(`[运维查询] S2A 额度监控失败：${error instanceof Error ? error.stack : error}`)
     }
   }
 

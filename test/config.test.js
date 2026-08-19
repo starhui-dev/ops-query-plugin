@@ -175,7 +175,7 @@ test("拒绝无效配置", () => {
           accounts: [{ account: "codex:16", thresholdPercent: 20 }],
         },
       }),
-    /必须选择有效的 S2A OpenAI OAuth 账号/,
+    /必须选择有效的 S2A 额度账号/,
   )
 })
 

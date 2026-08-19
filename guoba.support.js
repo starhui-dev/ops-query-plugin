@@ -15,7 +15,7 @@ export function supportGuoba() {
       isV3: true,
       isV2: false,
       showInMenu: true,
-      description: "查询 S2A Codex 额度、渠道状态、SLA 和 Codex 重置动态",
+      description: "查询 S2A 账号额度、渠道状态、SLA 和 Codex 重置动态",
       icon: "mdi:server-network",
       iconColor: "#287a6d",
     },
@@ -137,7 +137,7 @@ export function supportGuoba() {
         {
           field: "alerts.intervalMinutes",
           label: "检查间隔",
-          bottomHelpMessage: "每隔多少分钟检查一次 Codex 额度、重置订阅与 Sub2API SLA",
+          bottomHelpMessage: "每隔多少分钟检查一次账号额度、重置订阅与 Sub2API SLA",
           component: "InputNumber",
           required: true,
           componentProps: { min: 1, max: 1440, step: 1 },
@@ -171,7 +171,7 @@ export function supportGuoba() {
         {
           field: "alerts.accounts",
           label: "监控账号",
-          bottomHelpMessage: "每个 S2A Codex OAuth 账号可设置独立的剩余额度阈值",
+          bottomHelpMessage: "每个可查询额度的 S2A 账号可设置独立的剩余额度阈值",
           component: "GSubForm",
           componentProps: {
             multiple: true,
@@ -184,7 +184,7 @@ export function supportGuoba() {
                 required: true,
                 componentProps: {
                   options: accountOptions,
-                  placeholder: "请选择 S2A OAuth 账号",
+                  placeholder: "请选择 S2A 账号",
                   showSearch: true,
                   optionFilterProp: "label",
                 },
