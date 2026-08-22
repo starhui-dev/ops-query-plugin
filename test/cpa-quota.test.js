@@ -326,6 +326,38 @@ test("CPA 查询 xAI 周期、产品、月度和按需额度", async () => {
   )
 })
 
+test("CPA 查询 xAI 时省略的周用量按 0% 展示", async () => {
+  const results = await queryCpaQuota(
+    config,
+    "Asia/Shanghai",
+    [{ source: "cpa", platform: "xai", accountId: "xai:1" }],
+    createCpaFetch([{ provider: "xai", auth_index: "xai:1", email: "xai@example.com" }], request => {
+      if (request.url.includes("format=credits")) {
+        return {
+          config: {
+            currentPeriod: { type: "USAGE_PERIOD_TYPE_WEEKLY", end: "2026-08-27T07:45:00Z" },
+          },
+        }
+      }
+      return {
+        config: {
+          currentPeriod: { type: "USAGE_PERIOD_TYPE_MONTHLY", end: "2026-08-31T16:00:00Z" },
+          monthlyLimit: {},
+          onDemandCap: {},
+          on_demand_enabled: false,
+        },
+      }
+    }),
+  )
+
+  assert.equal(results[0].error, undefined)
+  assert.deepEqual(
+    results[0].windows.map(window => [window.label, window.usedPercent, window.detail]),
+    [["每周额度", 0, undefined]],
+  )
+  assert.equal(results[0].windows[0].resetAt.toISOString(), "2026-08-27T07:45:00.000Z")
+})
+
 test("CPA OAuth 查询失败会保留账号级错误", async () => {
   const results = await queryCpaQuota(
     config,
