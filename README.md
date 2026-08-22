@@ -69,6 +69,7 @@ Codex 重置命令不区分英文字母大小写，并允许在 `Codex` 与中�
 
 CPA OAuth 额度通过 CLIProxyAPI Management API 使用各账号对应的上游配额接口实时查询；
 Kimi 和 Zhipu GLM Key 额度来自 S2A 在账号被调用时记录的快照，可能有分钟级滞后。
+CPA 账号名称优先使用认证文件的备注（`note`），其次使用 `label`，未设置时才显示脱敏邮箱。
 
 ## 配置
 

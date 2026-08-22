@@ -46,9 +46,20 @@ test("CPA 列出全部支持配额且未停用的 OAuth 提供商", async () => 
     requests.push({ url: String(url), options: requestOptions })
     return jsonResponse({
       files: [
-        { provider: "antigravity", auth_index: "ag-a", email: "ag@example.com" },
-        { provider: "claude", auth_index: "claude-a", email: "claude@example.com" },
-        { provider: "codex", auth_index: "codex-a", email: "codex@example.com" },
+        {
+          provider: "antigravity",
+          auth_index: "ag-a",
+          note: "国内主号",
+          label: "Antigravity Pro",
+          email: "ag@example.com",
+        },
+        {
+          provider: "claude",
+          auth_index: "claude-a",
+          label: "Claude Max",
+          email: "claude@example.com",
+        },
+        { provider: "codex", auth_index: "codex-a", note: "", email: "codex@example.com" },
         { provider: "kimi", auth_index: "kimi-a", email: "kimi@example.com" },
         { provider: "x-ai", auth_index: "xai:1", email: "xai@example.com" },
         { provider: "gemini", auth_index: "gemini-a" },
@@ -58,8 +69,8 @@ test("CPA 列出全部支持配额且未停用的 OAuth 提供商", async () => 
   })
 
   assert.deepEqual(options, [
-    { label: "CPA · Antigravity · ag@example.com", value: "cpa:antigravity:ag-a" },
-    { label: "CPA · Claude · claude@example.com", value: "cpa:claude:claude-a" },
+    { label: "CPA · Antigravity · 国内主号", value: "cpa:antigravity:ag-a" },
+    { label: "CPA · Claude · Claude Max", value: "cpa:claude:claude-a" },
     { label: "CPA · Codex · codex@example.com", value: "cpa:codex:codex-a" },
     { label: "CPA · Kimi · kimi@example.com", value: "cpa:kimi:kimi-a" },
     { label: "CPA · xAI · xai@example.com", value: "cpa:xai:xai:1" },
@@ -74,6 +85,8 @@ test("CPA 查询 Codex 全部额度窗口", async () => {
     {
       provider: "codex",
       auth_index: "codex-a",
+      note: "主力 Codex",
+      label: "Codex Pro",
       email: "user@example.com",
       id_token: accountToken("account-a"),
     },
@@ -125,7 +138,7 @@ test("CPA 查询 Codex 全部额度窗口", async () => {
       label: "Codex",
       account: {
         id: "codex-a",
-        name: "user@example.com",
+        name: "主力 Codex",
         platform: "codex",
         type: "oauth",
         source: "cpa",
