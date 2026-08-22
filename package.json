@@ -1,7 +1,7 @@
 {
   "name": "ops-query-plugin",
   "version": "0.1.0",
-  "description": "TRSS Yunzai plugin for S2A operations and Codex reset notifications",
+  "description": "TRSS Yunzai plugin for CPA/S2A operations and Codex reset notifications",
   "type": "module",
   "author": "RealHeart",
   "license": "GPL-3.0-only",
@@ -16,6 +16,7 @@
   "keywords": [
     "trss-yunzai",
     "yunzai",
+    "cliproxyapi",
     "sub2api",
     "codex"
   ],

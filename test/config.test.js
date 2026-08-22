@@ -5,11 +5,13 @@ import { applyConfigUpdate, validateConfig } from "../lib/config.js"
 const current = {
   proxy: {
     url: "http://user:password@127.0.0.1:7890",
+    cpaEnabled: false,
     s2aEnabled: false,
     codexRadarEnabled: false,
     codexResetsEnabled: false,
     randomBackgroundEnabled: false,
   },
+  cpa: { baseUrl: "https://cpa.old", managementKey: "cpa-secret", timeoutMs: 10000 },
   s2a: {
     baseUrl: "https://s2a.old",
     adminApiKey: "s2a-secret",
@@ -30,10 +32,12 @@ const current = {
   },
 }
 
-test("锅巴留空 S2A 密钥时保留原值", () => {
+test("锅巴留空 CPA 与 S2A 密钥时保留原值", () => {
   const updated = applyConfigUpdate(current, {
+    "cpa.managementKey": "",
     "s2a.adminApiKey": "",
   })
+  assert.equal(updated.cpa.managementKey, "cpa-secret")
   assert.equal(updated.s2a.adminApiKey, "s2a-secret")
 })
 
@@ -46,6 +50,7 @@ test("锅巴留空代理地址时保留原值", () => {
 
 test("锅巴可以分别选择走代理的功能", () => {
   const updated = applyConfigUpdate(current, {
+    "proxy.cpaEnabled": true,
     "proxy.s2aEnabled": true,
     "proxy.codexRadarEnabled": true,
     "proxy.codexResetsEnabled": true,
@@ -53,6 +58,7 @@ test("锅巴可以分别选择走代理的功能", () => {
   })
   assert.deepEqual(updated.proxy, {
     ...current.proxy,
+    cpaEnabled: true,
     s2aEnabled: true,
     codexRadarEnabled: true,
     codexResetsEnabled: true,
@@ -78,11 +84,19 @@ test("锅巴可以配置 Sub2API SLA 告警", () => {
   })
 })
 
-test("锅巴可以配置 S2A OAuth 账号额度告警", () => {
+test("锅巴可以配置 CPA OAuth 与 S2A Key 账号额度告警", () => {
   const updated = applyConfigUpdate(current, {
-    "alerts.accounts": [{ account: "openai:16", thresholdPercent: 20 }],
+    "alerts.accounts": [
+      { account: "cpa:claude:claude-a", thresholdPercent: 20 },
+      { account: "cpa:codex:codex-a", thresholdPercent: 20 },
+      { account: "s2a:kimi:26", thresholdPercent: 10 },
+    ],
   })
-  assert.deepEqual(updated.alerts.accounts, [{ account: "openai:16", thresholdPercent: 20 }])
+  assert.deepEqual(updated.alerts.accounts, [
+    { account: "cpa:claude:claude-a", thresholdPercent: 20 },
+    { account: "cpa:codex:codex-a", thresholdPercent: 20 },
+    { account: "s2a:kimi:26", thresholdPercent: 10 },
+  ])
 })
 
 test("锅巴可以配置 Codex 重置订阅", () => {
@@ -114,6 +128,7 @@ test("校验 SLA 告警及群白名单", () => {
 
 test("拒绝无效配置", () => {
   for (const field of [
+    "cpaEnabled",
     "s2aEnabled",
     "codexRadarEnabled",
     "codexResetsEnabled",
@@ -135,6 +150,10 @@ test("拒绝无效配置", () => {
         proxy: { ...current.proxy, url: "socks5://127.0.0.1:7890" },
       }),
     /代理只支持 HTTP 或 HTTPS/,
+  )
+  assert.throws(
+    () => validateConfig({ ...current, cpa: { ...current.cpa, baseUrl: "file:///tmp/config" } }),
+    /只支持 HTTP 或 HTTPS/,
   )
   assert.throws(
     () => validateConfig({ ...current, s2a: { ...current.s2a, baseUrl: "file:///tmp/config" } }),
@@ -161,7 +180,7 @@ test("拒绝无效配置", () => {
         ...current,
         alerts: {
           ...current.alerts,
-          accounts: [{ account: "openai:16", thresholdPercent: 101 }],
+          accounts: [{ account: "cpa:codex:codex-a", thresholdPercent: 101 }],
         },
       }),
     /账号告警阈值必须在 0 至 100/,
@@ -172,10 +191,10 @@ test("拒绝无效配置", () => {
         ...current,
         alerts: {
           ...current.alerts,
-          accounts: [{ account: "codex:16", thresholdPercent: 20 }],
+          accounts: [{ account: "openai:16", thresholdPercent: 20 }],
         },
       }),
-    /必须选择有效的 S2A 额度账号/,
+    /必须选择有效的额度账号/,
   )
 })
 
@@ -210,7 +229,7 @@ test("启用告警时必须配置额度账号、Codex 重置订阅或 SLA 监控
         ...current.alerts,
         enabled: true,
         targetGroups: ["10001"],
-        accounts: [{ account: "openai:16", thresholdPercent: 20 }],
+        accounts: [{ account: "cpa:codex:codex-a", thresholdPercent: 20 }],
       },
     }),
   )

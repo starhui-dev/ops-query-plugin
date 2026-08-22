@@ -1,10 +1,10 @@
 import assert from "node:assert/strict"
 import test from "node:test"
 import {
+  buildAccountQuotaImageData,
   buildS2aQuotaAccountOptions,
-  buildS2aQuotaImageData,
-  formatS2aQuota,
-  getS2aQuotaRemainingPercentages,
+  formatAccountQuota,
+  getQuotaRemainingPercentages,
   listS2aQuotaAccounts,
   queryS2aQuota,
 } from "../lib/s2a-quota.js"
@@ -20,25 +20,6 @@ function jsonResponse(data, status = 200) {
     status,
     headers: { "Content-Type": "application/json" },
   })
-}
-
-function codexAccount(id, name = `account-${id}`, extra = {}) {
-  return { id, name, platform: "openai", type: "oauth", status: "active", extra }
-}
-
-function claudeAccount(id = 25) {
-  return {
-    id,
-    name: "Claude Pro 订阅",
-    platform: "anthropic",
-    type: "oauth",
-    session_window_end: "2026-08-19T20:30:00+08:00",
-    extra: {
-      session_window_utilization: 0.07,
-      passive_usage_7d_utilization: 0.01,
-      passive_usage_7d_reset: 1787698800,
-    },
-  }
 }
 
 function kimiAccount(id = 26) {
@@ -66,24 +47,7 @@ function zhipuAccount(id = 24) {
   }
 }
 
-const codexQuotaPayload = {
-  code: 0,
-  data: {
-    email: "user@example.com",
-    plan_type: "pro",
-    rate_limit: {
-      primary_window: { used_percent: 25, limit_window_seconds: 18000, reset_at: 1787196554 },
-    },
-    additional_rate_limits: [
-      {
-        limit_name: "Codex Spark",
-        rate_limit: { primary_window: { used_percent: 90, limit_window_seconds: 604800 } },
-      },
-    ],
-  },
-}
-
-test("分页查询 S2A 上支持额度的账号", async () => {
+test("分页查询 S2A 上支持额度的 Key 账号并排除 OAuth", async () => {
   const originalFetch = globalThis.fetch
   const requests = []
   globalThis.fetch = async (url, options) => {
@@ -95,11 +59,15 @@ test("分页查询 S2A 上支持额度的账号", async () => {
         items:
           page === "1"
             ? [
-                codexAccount(1),
+                { id: 1, name: "Codex OAuth", platform: "openai", type: "oauth" },
                 { id: 9, name: "余额 Key", platform: "openai", type: "apikey" },
                 { id: 23, name: "Grok", platform: "grok", type: "apikey" },
               ]
-            : [kimiAccount(), zhipuAccount(), claudeAccount()],
+            : [
+                kimiAccount(),
+                zhipuAccount(),
+                { id: 25, name: "Claude OAuth", platform: "anthropic", type: "oauth" },
+              ],
         pages: 2,
       },
     })
@@ -109,7 +77,7 @@ test("分页查询 S2A 上支持额度的账号", async () => {
     const accounts = await listS2aQuotaAccounts(config)
     assert.deepEqual(
       accounts.map(item => item.id),
-      [1, 26, 24, 25],
+      [26, 24],
     )
     assert.equal(requests.length, 2)
     assert.equal(new URL(requests[0].url).searchParams.get("platform"), null)
@@ -119,14 +87,17 @@ test("分页查询 S2A 上支持额度的账号", async () => {
   }
 })
 
-test("锅巴账号选项带平台标签并使用平台加账号 ID 作为内部值", () => {
-  assert.deepEqual(buildS2aQuotaAccountOptions([codexAccount(16, "Codex Pro"), kimiAccount()]), [
-    { label: "Codex · Codex Pro", value: "openai:16" },
-    { label: "Kimi · Kimi Code 订阅", value: "kimi:26" },
-  ])
+test("锅巴只生成 S2A Key 账号选项", () => {
+  assert.deepEqual(
+    buildS2aQuotaAccountOptions([
+      { id: 16, name: "Codex Pro", platform: "openai", type: "oauth" },
+      kimiAccount(),
+    ]),
+    [{ label: "S2A · Kimi · Kimi Code 订阅", value: "s2a:kimi:26" }],
+  )
 })
 
-test("按平台解析额度窗口并过滤没有额度的账号", async () => {
+test("按平台解析 S2A Key 额度窗口并过滤没有额度的账号", async () => {
   const originalFetch = globalThis.fetch
   globalThis.fetch = async url => {
     const path = new URL(url).pathname
@@ -135,8 +106,7 @@ test("按平台解析额度窗口并过滤没有额度的账号", async () => {
         code: 0,
         data: {
           items: [
-            codexAccount(16, "ChatGPT Pro 20x 订阅"),
-            claudeAccount(),
+            { id: 16, name: "ChatGPT Pro", platform: "openai", type: "oauth" },
             kimiAccount(),
             zhipuAccount(),
             { id: 30, name: "无快照 Kimi", platform: "kimi", type: "apikey", extra: {} },
@@ -145,32 +115,17 @@ test("按平台解析额度窗口并过滤没有额度的账号", async () => {
         },
       })
     }
-    return jsonResponse(codexQuotaPayload)
+    throw new Error(`unexpected request: ${path}`)
   }
 
   try {
     const results = await queryS2aQuota(config, "Asia/Shanghai")
     assert.deepEqual(
       results.map(result => result.account.id),
-      [16, 25, 26, 24],
+      [26, 24],
     )
 
-    const [codex, claude, kimi, zhipu] = results
-    assert.equal(codex.plan, "pro")
-    assert.deepEqual(
-      codex.windows.map(window => [window.label, window.usedPercent]),
-      [
-        ["Codex 5 小时", 25],
-        ["Codex Spark 每周", 90],
-      ],
-    )
-    assert.deepEqual(
-      claude.windows.map(window => [window.label, window.usedPercent]),
-      [
-        ["5 小时", 7.000000000000001],
-        ["每周", 1],
-      ],
-    )
+    const [kimi, zhipu] = results
     assert.deepEqual(
       kimi.windows.map(window => [window.label, window.usedPercent]),
       [
@@ -182,48 +137,8 @@ test("按平台解析额度窗口并过滤没有额度的账号", async () => {
       zhipu.windows.map(window => [window.label, window.usedPercent]),
       [["5 小时", 2]],
     )
-    assert.equal(claude.windows[0].resetAt.toISOString(), "2026-08-19T12:30:00.000Z")
-    assert.equal(claude.windows[1].resetAt.toISOString(), "2026-08-25T23:00:00.000Z")
-  } finally {
-    globalThis.fetch = originalFetch
-  }
-})
-
-test("Codex 额度接口失败时回退账号快照，无快照才报错", async () => {
-  const originalFetch = globalThis.fetch
-  globalThis.fetch = async url => {
-    const path = new URL(url).pathname
-    if (path === "/api/v1/admin/accounts") {
-      return jsonResponse({
-        code: 0,
-        data: {
-          items: [
-            codexAccount(1, "有快照", {
-              codex_5h_window_minutes: 0,
-              codex_5h_used_percent: 0,
-              codex_7d_window_minutes: 10080,
-              codex_7d_used_percent: 100,
-              codex_7d_reset_at: "2026-08-20T11:29:13+08:00",
-            }),
-            codexAccount(2, "无快照"),
-          ],
-          pages: 1,
-        },
-      })
-    }
-    return jsonResponse({ message: "upstream failed" }, 502)
-  }
-
-  try {
-    const results = await queryS2aQuota(config, "Asia/Shanghai")
-    assert.equal(results.length, 2)
-    assert.equal(results[0].error, undefined)
-    assert.deepEqual(
-      results[0].windows.map(window => [window.label, window.usedPercent]),
-      [["Codex 每周", 100]],
-    )
-    assert.match(results[1].error, /upstream failed/)
-    assert.deepEqual(results[1].windows, [])
+    assert.equal(kimi.source, "s2a")
+    assert.equal(kimi.account.source, "s2a")
   } finally {
     globalThis.fetch = originalFetch
   }
@@ -250,20 +165,27 @@ test("只查询选中的账号", async () => {
 
 test("计算额度窗口的剩余比例", () => {
   assert.deepEqual(
-    getS2aQuotaRemainingPercentages({
+    getQuotaRemainingPercentages({
       windows: [{ usedPercent: 25 }, { usedPercent: 90 }, { usedPercent: null }],
     }),
     [75, 10],
   )
-  assert.deepEqual(getS2aQuotaRemainingPercentages({ error: "failed", windows: [] }), [])
+  assert.deepEqual(getQuotaRemainingPercentages({ error: "failed", windows: [] }), [])
 })
 
-test("格式化 S2A 账号额度并脱敏账号", () => {
+test("合并格式化 CPA OAuth 与 S2A Key 账号额度并脱敏账号", () => {
   const results = [
     {
-      platform: "openai",
+      source: "cpa",
+      platform: "codex",
       label: "Codex",
-      account: codexAccount(16, "ChatGPT Pro 20x 订阅"),
+      account: {
+        id: "codex-a",
+        name: "ChatGPT Pro 20x 订阅",
+        platform: "codex",
+        type: "oauth",
+        source: "cpa",
+      },
       plan: "pro",
       timeZone: "Asia/Shanghai",
       windows: [
@@ -276,30 +198,43 @@ test("格式化 S2A 账号额度并脱敏账号", () => {
       ],
     },
     {
+      source: "s2a",
       platform: "kimi",
       label: "Kimi",
-      account: { id: 26, name: "user@example.com", platform: "kimi", type: "apikey" },
+      account: {
+        id: 26,
+        name: "user@example.com",
+        platform: "kimi",
+        type: "apikey",
+        source: "s2a",
+      },
       plan: null,
       timeZone: "Asia/Shanghai",
-      windows: [{ label: "5 小时", usedPercent: 8, resetAt: null }],
+      windows: [{ label: "5 小时", usedPercent: 8, resetAt: null, detail: "用量 8 / 100" }],
     },
   ]
 
-  const text = formatS2aQuota(results)
-  assert.match(text, /^S2A 账号额度/m)
-  assert.match(text, /Codex · ChatGPT Pro 20x 订阅/)
+  const text = formatAccountQuota(results)
+  assert.match(text, /^账号额度/m)
+  assert.match(text, /CPA · Codex · ChatGPT Pro 20x 订阅/)
   assert.match(text, /Codex Spark 每周  剩余 10%/)
-  assert.match(text, /Kimi · u\.\.\.r@example\.com/)
+  assert.match(text, /S2A · Kimi · u\.\.\.r@example\.com/)
+  assert.match(text, /剩余 92%  用量 8 \/ 100/)
   assert.doesNotMatch(text, /user@example\.com/)
 
-  const data = buildS2aQuotaImageData(results, "Asia/Shanghai", Date.parse("2026-08-14T04:30:00Z"))
-  assert.equal(data.kicker, "S2A / QUOTA")
+  const data = buildAccountQuotaImageData(
+    results,
+    "Asia/Shanghai",
+    Date.parse("2026-08-14T04:30:00Z"),
+  )
+  assert.equal(data.kicker, "ACCOUNT / QUOTA")
   assert.equal(data.summary[0].value, "2")
   assert.equal(data.summary[3].value, "10%")
   assert.equal(data.sections[0].kind, "Codex")
-  assert.equal(data.sections[0].subtitle, "S2A OAuth 账号")
+  assert.equal(data.sections[0].subtitle, "CPA OAuth 账号")
   assert.equal(data.sections[0].rows.length, 2)
   assert.equal(data.sections[1].kind, "Kimi")
   assert.equal(data.sections[1].subtitle, "S2A Key 账号")
+  assert.match(data.sections[1].rows[0].detail, /用量 8 \/ 100/)
   assert.doesNotMatch(JSON.stringify(data), /user@example\.com/)
 })

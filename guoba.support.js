@@ -1,4 +1,5 @@
 import { getGuobaConfig, loadConfig, updateConfig } from "./lib/config.js"
+import { listCpaQuotaAccounts } from "./lib/cpa-quota.js"
 import { selectProxy, withProxy } from "./lib/proxy.js"
 import { listS2aQuotaAccountOptions } from "./lib/s2a-quota.js"
 
@@ -15,12 +16,38 @@ export function supportGuoba() {
       isV3: true,
       isV2: false,
       showInMenu: true,
-      description: "查询 S2A 账号额度、渠道状态、SLA 和 Codex 重置动态",
+      description: "查询账号额度、渠道状态、SLA 和 Codex 重置动态",
       icon: "mdi:server-network",
       iconColor: "#287a6d",
     },
     configInfo: {
       schemas: [
+        {
+          label: "CPA 配置",
+          component: "SOFT_GROUP_BEGIN",
+        },
+        {
+          field: "cpa.baseUrl",
+          label: "服务地址",
+          bottomHelpMessage: "CLIProxyAPI 地址，例如 https://cpa.example.com",
+          component: "Input",
+          componentProps: { placeholder: "请输入 CPA 服务地址" },
+        },
+        {
+          field: "cpa.managementKey",
+          label: "Management Key",
+          bottomHelpMessage: "用于查询 CPA OAuth 账号额度；留空保存会保留当前密钥",
+          component: "InputPassword",
+          componentProps: { placeholder: "留空表示不修改" },
+        },
+        {
+          field: "cpa.timeoutMs",
+          label: "请求超时",
+          bottomHelpMessage: "单个 HTTP 请求的超时时间，单位为毫秒",
+          component: "InputNumber",
+          required: true,
+          componentProps: { min: 1000, max: 60000, step: 1000 },
+        },
         {
           label: "S2A 配置",
           component: "SOFT_GROUP_BEGIN",
@@ -72,9 +99,15 @@ export function supportGuoba() {
           componentProps: { placeholder: "例如 http://127.0.0.1:7890" },
         },
         {
+          field: "proxy.cpaEnabled",
+          label: "CPA 额度查询与告警",
+          bottomHelpMessage: "CPA OAuth 额度、账号列表和相关告警走代理",
+          component: "Switch",
+        },
+        {
           field: "proxy.s2aEnabled",
           label: "S2A 查询与告警",
-          bottomHelpMessage: "S2A 额度、渠道状态、SLA、账号列表和相关告警走代理",
+          bottomHelpMessage: "S2A Key 额度、渠道状态、SLA、账号列表和相关告警走代理",
           component: "Switch",
         },
         {
@@ -172,7 +205,7 @@ export function supportGuoba() {
         {
           field: "alerts.accounts",
           label: "监控账号",
-          bottomHelpMessage: "每个可查询额度的 S2A 账号可设置独立的剩余额度阈值",
+          bottomHelpMessage: "每个 CPA OAuth 或 S2A Key 账号可设置独立的剩余额度阈值",
           component: "GSubForm",
           componentProps: {
             multiple: true,
@@ -185,7 +218,7 @@ export function supportGuoba() {
                 required: true,
                 componentProps: {
                   options: accountOptions,
-                  placeholder: "请选择 S2A 账号",
+                  placeholder: "请选择额度账号",
                   showSearch: true,
                   optionFilterProp: "label",
                 },
@@ -253,14 +286,31 @@ export function supportGuoba() {
   }
 }
 
-async function refreshAccountOptions(config) {
+async function refreshAccountOptions(config = loadConfig()) {
   try {
-    const current = config ?? loadConfig()
-    const options = await withProxy(selectProxy(current.proxy, "s2a"), fetchImpl =>
-      listS2aQuotaAccountOptions(current.s2a, fetchImpl),
-    )
+    const queries = []
+    if (hasServiceConfig(config.cpa, "managementKey")) {
+      queries.push(
+        withProxy(selectProxy(config.proxy, "cpa"), fetchImpl =>
+          listCpaQuotaAccounts(config.cpa, fetchImpl),
+        ),
+      )
+    }
+    if (hasServiceConfig(config.s2a, "adminApiKey")) {
+      queries.push(
+        withProxy(selectProxy(config.proxy, "s2a"), fetchImpl =>
+          listS2aQuotaAccountOptions(config.s2a, fetchImpl),
+        ),
+      )
+    }
+    const settled = await Promise.allSettled(queries)
+    const options = settled.flatMap(result => (result.status === "fulfilled" ? result.value : []))
     accountOptions.splice(0, accountOptions.length, ...options)
   } catch {
     accountOptions.splice(0, accountOptions.length)
   }
+}
+
+function hasServiceConfig(config, keyName) {
+  return Boolean(config?.baseUrl && config?.[keyName])
 }

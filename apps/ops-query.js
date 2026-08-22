@@ -1,7 +1,9 @@
 import { loadConfig } from "../lib/config.js"
+import { OPS_QUERY_RULES } from "../lib/commands.js"
+import { queryCpaQuota } from "../lib/cpa-quota.js"
 import { buildS2aImageData, formatS2aForwardNodes, queryS2aMonitors } from "../lib/s2a.js"
 import { buildS2aV2ImageData, formatS2aV2ForwardNodes, queryS2aV2Monitor } from "../lib/s2a-v2.js"
-import { buildS2aQuotaImageData, formatS2aQuota, queryS2aQuota } from "../lib/s2a-quota.js"
+import { buildAccountQuotaImageData, formatAccountQuota, queryS2aQuota } from "../lib/s2a-quota.js"
 import {
   buildS2aSlaAlertImageData,
   evaluateS2aSlaAlert,
@@ -42,35 +44,10 @@ export class OpsQuery extends plugin {
   constructor() {
     super({
       name: "运维查询",
-      dsc: "查询 S2A 账号额度、渠道状态、SLA 和 Codex 重置动态",
+      dsc: "查询账号额度、渠道状态、SLA 和 Codex 重置动态",
       event: "message",
       priority: 5000,
-      rule: [
-        {
-          reg: "^#?[Ss]2[Aa]\\s*(额度|配额)$",
-          fnc: "s2aQuota",
-        },
-        {
-          reg: "^#?(S2A状态|渠道状态)$",
-          fnc: "s2aStatus",
-        },
-        {
-          reg: "^#?(S2A\\s*)?SLA$",
-          fnc: "s2aSla",
-        },
-        {
-          reg: "^#?Codex雷达$",
-          fnc: "codexRadar",
-        },
-        {
-          reg: "^#?[Cc][Oo][Dd][Ee][Xx]\\s*重置$",
-          fnc: "codexReset",
-        },
-        {
-          reg: "^#?运维查询帮助$",
-          fnc: "help",
-        },
-      ],
+      rule: OPS_QUERY_RULES,
     })
     this.task = {
       name: "运维告警监控",
@@ -85,8 +62,8 @@ export class OpsQuery extends plugin {
     return this.reply(
       [
         "运维查询",
-        "#S2A额度：查询 S2A 各平台账号额度",
-        "#S2A状态：查询 S2A 渠道监控",
+        "#账号额度：查询 CPA OAuth 与 S2A Key 账号额度",
+        "#渠道状态：查询 S2A 渠道监控",
         "#SLA：查询 Sub2API SLA",
         "#Codex雷达：获取 Codex 雷达最新速览图",
         "#Codex重置：查询最新 Codex 重置公告",
@@ -94,27 +71,25 @@ export class OpsQuery extends plugin {
     )
   }
 
-  async s2aQuota() {
+  async accountQuota() {
     if (!(await this.ensureAccess())) return false
     try {
       const config = loadConfig()
-      const results = await withProxy(selectProxy(config.proxy, "s2a"), fetchImpl =>
-        queryS2aQuota(config.s2a, config.display.timeZone, [], fetchImpl),
-      )
-      if (!results.length) return this.reply("S2A 中没有可查询额度的账号")
+      const results = await queryAccountQuotaResults(config)
+      if (!results.length) return this.reply("没有可查询额度的账号")
       const image = await renderStatusImage(
-        buildS2aQuotaImageData(results, config.display.timeZone),
-        `s2a-quota-${Date.now()}`,
+        buildAccountQuotaImageData(results, config.display.timeZone),
+        `account-quota-${Date.now()}`,
         selectProxy(config.proxy, "randomBackground"),
       )
-      return this.reply(image || formatS2aQuota(results))
+      return this.reply(image || formatAccountQuota(results))
     } catch (error) {
-      logger.error(`[运维查询] S2A 额度查询失败：${error instanceof Error ? error.stack : error}`)
-      return this.reply(`S2A 额度查询失败：${safeError(error)}`)
+      logger.error(`[运维查询] 账号额度查询失败：${error instanceof Error ? error.stack : error}`)
+      return this.reply(`账号额度查询失败：${safeError(error)}`)
     }
   }
 
-  async s2aStatus() {
+  async channelStatus() {
     if (!(await this.ensureAccess())) return false
     try {
       const config = loadConfig()
@@ -146,11 +121,11 @@ export class OpsQuery extends plugin {
       )
     } catch (error) {
       logger.error(`[运维查询] S2A 查询失败：${error instanceof Error ? error.stack : error}`)
-      return this.reply(`S2A 查询失败：${safeError(error)}`)
+      return this.reply(`渠道状态查询失败：${safeError(error)}`)
     }
   }
 
-  async s2aSla() {
+  async sla() {
     if (!(await this.ensureAccess())) return false
     try {
       const config = loadConfig()
@@ -215,14 +190,9 @@ export class OpsQuery extends plugin {
   async checkQuotaAlerts(config) {
     if (!config.alerts.accounts.length) return
     try {
-      const accountIds = config.alerts.accounts
-        .map(parseAlertAccount)
-        .filter(Boolean)
-        .map(account => account.accountId)
-      if (!accountIds.length) return
-      const results = await withProxy(selectProxy(config.proxy, "s2a"), fetchImpl =>
-        queryS2aQuota(config.s2a, config.display.timeZone, accountIds, fetchImpl),
-      )
+      const accounts = config.alerts.accounts.map(parseAlertAccount).filter(Boolean)
+      if (!accounts.length) return
+      const results = await queryAccountQuotaResults(config, accounts)
       const alerts = evaluateQuotaAlerts(config.alerts.accounts, results, quotaAlertStates)
       if (!alerts.length) return
       const image = await renderStatusImage(
@@ -232,7 +202,7 @@ export class OpsQuery extends plugin {
       )
       await this.sendAlert(config, image || formatQuotaAlerts(alerts))
     } catch (error) {
-      logger.error(`[运维查询] S2A 额度监控失败：${error instanceof Error ? error.stack : error}`)
+      logger.error(`[运维查询] 账号额度监控失败：${error instanceof Error ? error.stack : error}`)
     }
   }
 
@@ -288,6 +258,36 @@ export class OpsQuery extends plugin {
       await Bot.pickGroup(groupId).sendMsg(message)
     }
   }
+}
+
+async function queryAccountQuotaResults(config, accounts = null) {
+  const allAccounts = accounts === null
+  const cpaAccounts = allAccounts ? [] : accounts.filter(account => account.source === "cpa")
+  const s2aAccounts = allAccounts ? [] : accounts.filter(account => account.source === "s2a")
+  const s2aAccountIds = s2aAccounts.map(account => account.accountId)
+  const queries = []
+
+  if ((allAccounts && hasServiceConfig(config.cpa, "managementKey")) || cpaAccounts.length) {
+    queries.push(
+      withProxy(selectProxy(config.proxy, "cpa"), fetchImpl =>
+        queryCpaQuota(config.cpa, config.display.timeZone, cpaAccounts, fetchImpl),
+      ),
+    )
+  }
+  if ((allAccounts && hasServiceConfig(config.s2a, "adminApiKey")) || s2aAccountIds.length) {
+    queries.push(
+      withProxy(selectProxy(config.proxy, "s2a"), fetchImpl =>
+        queryS2aQuota(config.s2a, config.display.timeZone, s2aAccountIds, fetchImpl),
+      ),
+    )
+  }
+  if (!queries.length) throw new Error("CPA 或 S2A 尚未配置服务地址和密钥")
+
+  return (await Promise.all(queries)).flat()
+}
+
+function hasServiceConfig(config, keyName) {
+  return Boolean(config?.baseUrl && config?.[keyName])
 }
 
 function safeError(error) {

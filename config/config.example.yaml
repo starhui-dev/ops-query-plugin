@@ -1,3 +1,8 @@
+cpa:
+  baseUrl: ""
+  managementKey: ""
+  timeoutMs: 10000
+
 s2a:
   baseUrl: ""
   adminApiKey: ""
@@ -6,6 +11,7 @@ s2a:
 
 proxy:
   url: ""
+  cpaEnabled: false
   s2aEnabled: false
   codexRadarEnabled: false
   codexResetsEnabled: false

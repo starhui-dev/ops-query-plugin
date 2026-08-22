@@ -4,11 +4,16 @@ import { selectProxy, withProxy } from "../lib/proxy.js"
 
 const proxy = {
   url: "http://127.0.0.1:7890",
+  cpaEnabled: true,
   s2aEnabled: false,
   codexRadarEnabled: true,
 }
 
 test("只为选中的功能启用代理", () => {
+  assert.deepEqual(selectProxy(proxy, "cpa"), {
+    enabled: true,
+    url: proxy.url,
+  })
   assert.deepEqual(selectProxy(proxy, "s2a"), {
     enabled: false,
     url: proxy.url,
