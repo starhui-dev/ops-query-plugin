@@ -151,7 +151,6 @@ export class OpsQuery extends plugin {
         groupId,
         userId,
         email,
-        accountId: s2aUser.id,
         applicantName: displayApplicant(this.e),
         sourceMessageId: this.e.message_id,
       })
@@ -195,7 +194,6 @@ export class OpsQuery extends plugin {
       groupId,
       userId,
       email: verification.email,
-      accountId: verification.accountId,
       applicantName: verification.applicantName || displayApplicant(this.e),
       sourceMessageId: verification.sourceMessageId || this.e.message_id,
     })
@@ -248,7 +246,6 @@ export class OpsQuery extends plugin {
     const request = createBalanceRequest(state, {
       groupId,
       userId,
-      accountId: binding.accountId,
       email: binding.email,
       amount,
       reason: reasonParts.join(" ").slice(0, 200),
@@ -338,13 +335,12 @@ export class OpsQuery extends plugin {
             ? getS2aUserByEmail(config.s2a, request.email, fetchImpl)
             : getS2aUser(config.s2a, request.accountId, fetchImpl),
         )
-        request.accountId = s2aUser.id
         request.email = String(s2aUser.email || request.email || "")
           .trim()
           .toLowerCase()
         if (!request.email) throw new Error("S2A 用户资料缺少邮箱，无法完成绑定")
         const accountBinding =
-          findBindingByEmail(state, request.email) || findBindingByAccount(state, request.accountId)
+          findBindingByEmail(state, request.email) || findBindingByAccount(state, s2aUser.id)
         if (
           accountBinding &&
           (accountBinding.groupId !== request.groupId || accountBinding.userId !== request.userId)
@@ -354,7 +350,6 @@ export class OpsQuery extends plugin {
         saveBinding(state, {
           groupId: request.groupId,
           userId: request.userId,
-          accountId: request.accountId,
           email: request.email,
           approvedBy: String(this.e.user_id),
         })
@@ -364,14 +359,13 @@ export class OpsQuery extends plugin {
             ? getS2aUserByEmail(config.s2a, request.email, fetchImpl)
             : getS2aUser(config.s2a, request.accountId, fetchImpl),
         )
-        request.accountId = s2aUser.id
         request.email = String(s2aUser.email || request.email || "")
           .trim()
           .toLowerCase()
         await withProxy(selectProxy(config.proxy, "s2a"), fetchImpl =>
           addS2aUserBalance(
             config.s2a,
-            request.accountId,
+            s2aUser.id,
             request.amount,
             `群聊余额申请 ${request.id}（QQ ${request.userId}）`,
             fetchImpl,

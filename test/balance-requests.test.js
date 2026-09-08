@@ -67,3 +67,21 @@ test("申请编号可以通过申请消息 ID 定位，拒绝会保存理由", (
   assert.equal(request.status, "rejected")
   assert.equal(request.reason, "账号不匹配")
 })
+
+test("邮箱绑定申请不保存 S2A 数字用户 ID", () => {
+  const state = emptyBalanceRequestState()
+  const request = createBindingRequest(state, {
+    groupId: "100",
+    userId: "200",
+    email: "user@example.com",
+    applicantName: "测试用户",
+  })
+  assert.equal(Object.hasOwn(request, "accountId"), false)
+  const binding = bindAccount(state, {
+    groupId: "100",
+    userId: "200",
+    email: "user@example.com",
+    approvedBy: "admin",
+  })
+  assert.equal(Object.hasOwn(binding, "accountId"), false)
+})

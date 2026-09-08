@@ -13,7 +13,7 @@ test("邮箱验证码只保存哈希，正确验证码可以一次性验证", ()
   const state = emptyBalanceRequestState()
   const created = createEmailVerification(
     state,
-    { groupId: "100", userId: "200", email: "User@Example.com", accountId: 7 },
+    { groupId: "100", userId: "200", email: "User@Example.com" },
     1_700_000_000_000,
   )
   const verification = state.verifications["100:200"]
@@ -28,7 +28,7 @@ test("邮箱验证码错误次数达到上限后失效", () => {
   const state = emptyBalanceRequestState()
   const created = createEmailVerification(
     state,
-    { groupId: "100", userId: "200", email: "user@example.com", accountId: 7 },
+    { groupId: "100", userId: "200", email: "user@example.com" },
     1_700_000_000_000,
   )
   const wrongCode = created.code === "000000" ? "000001" : "000000"
