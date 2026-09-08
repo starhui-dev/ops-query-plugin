@@ -106,6 +106,19 @@ test("锅巴可以配置 Codex 重置订阅", () => {
   assert.deepEqual(updated.alerts.codexResets, { enabled: true })
 })
 
+test("锅巴可以配置余额申请", () => {
+  const updated = applyConfigUpdate(current, {
+    "balanceRequests.enabled": true,
+    "balanceRequests.maxAmount": 50,
+    "balanceRequests.adminUsers": ["30001"],
+  })
+  assert.deepEqual(updated.balanceRequests, {
+    enabled: true,
+    maxAmount: 50,
+    adminUsers: ["30001"],
+  })
+})
+
 test("校验 SLA 告警及群白名单", () => {
   const valid = {
     ...current,

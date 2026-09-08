@@ -21,6 +21,8 @@ Sub2API（S2A）Key 账号额度、S2A 渠道状态和 SLA，并订阅 Codex 重
 - 查询当前统计窗口内的 Sub2API SLA、成功请求和异常明细。
 - 配置群聊白名单和可查询人员，人员留空表示白名单群内不限人，私聊不可用；Yunzai
   主人可绕过全部查询限制。
+- 支持群成员绑定 Sub2API 用户账号并申请余额；绑定和余额申请均落盘记录，群主／管理员可
+  直接回复申请消息 `#通过` 或 `#拒绝`，通过后自动调用 Sub2API 管理接口增加余额。
 - 可按功能选择 CPA、S2A、Codex 雷达、Codex 重置和随机背景请求是否走 HTTP/HTTPS 代理。
 - 支持锅巴插件管理器，也可直接维护 YAML 配置。
 
@@ -61,6 +63,9 @@ pnpm install --prod --frozen-lockfile
 | `#SLA`                       | 查询 Sub2API SLA                   |
 | `#Codex雷达`                 | 获取 Codex 雷达最新速览图          |
 | `#Codex重置` / `#Codex 重置` | 查询最新 Codex 重置公告            |
+| `#绑定账号 <用户ID>`         | 提交 Sub2API 用户账号绑定申请      |
+| `#申请余额 <金额> [备注]`    | 提交余额增加申请                   |
+| `#通过` / `#拒绝`            | 管理员回复申请消息进行审批         |
 | `#运维查询帮助`              | 显示命令帮助                       |
 
 旧的 `#S2A额度`、`#S2A状态`、`#S2A SLA`、`#CPA…` 和 `#Codex额度` 命令不再响应。
@@ -85,6 +90,7 @@ CPA 账号名称优先使用认证文件的备注（`note`），其次使用 `la
 | `display.timeZone`      | 状态和告警更新时间所用时区               |
 | `access.groupWhitelist` | 普通用户可使用插件的群聊                 |
 | `access.queryUsers`     | 可执行查询的普通用户，留空只放开白名单群 |
+| `balanceRequests.*`     | 余额申请开关、单笔上限及额外审批人员     |
 | `proxy.*`               | HTTP/HTTPS 代理地址和功能开关            |
 | `alerts.*`              | 告警与订阅总开关、周期、群聊及提醒方式   |
 | `alerts.accounts`       | CPA/S2A 额度账号及其额度告警阈值         |
@@ -128,6 +134,13 @@ Sub2API 已启用运维监控。
 
 `#SLA` 查询使用 `alerts.sla.timeRange` 配置的统计窗口，默认查询近 1 小时；无需启用
 SLA 告警即可使用。
+
+余额申请使用 Sub2API 的用户 ID（不是上游 Key 账号 ID）。成员先发送
+`#绑定账号 <Sub2API 用户 ID>`，管理员回复该消息 `#通过` 后绑定才生效；之后发送
+`#申请余额 10` 或 `#申请余额 10 续费`，管理员回复申请消息 `#通过` 会调用
+`POST /api/v1/admin/users/:id/balance` 增加余额。绑定和申请状态保存在插件目录的
+`data/balance-requests.json`，该文件包含 QQ 号和申请记录，应限制文件权限并纳入备份。
+若管理员不直接回复消息，也可以使用 `#通过 BR-...` 或 `#拒绝 BR-...` 指定申请编号。
 
 `s2a.monitorVersion` 默认为 `v1`。选择 `v2` 前，需要先在 Sub2API 中启用渠道监控并将
 `channel_monitor_mode` 切换为 `v2`；否则 Sub2API 会拒绝 V2 监控接口请求。

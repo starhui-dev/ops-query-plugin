@@ -24,6 +24,11 @@ access:
   groupWhitelist: []
   queryUsers: []
 
+balanceRequests:
+  enabled: true
+  maxAmount: 100
+  adminUsers: []
+
 alerts:
   enabled: false
   intervalMinutes: 10

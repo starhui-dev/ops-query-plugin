@@ -160,6 +160,31 @@ export function supportGuoba() {
           componentProps: { allowAdd: true, allowDel: true },
         },
         {
+          label: "余额申请",
+          component: "SOFT_GROUP_BEGIN",
+        },
+        {
+          field: "balanceRequests.enabled",
+          label: "启用余额申请",
+          bottomHelpMessage: "群成员可绑定 S2A 用户账号并提交余额申请",
+          component: "Switch",
+        },
+        {
+          field: "balanceRequests.maxAmount",
+          label: "单笔申请上限",
+          bottomHelpMessage: "管理员审批前的单笔金额上限",
+          component: "InputNumber",
+          required: true,
+          componentProps: { min: 0.01, max: 1000000, step: 1 },
+        },
+        {
+          field: "balanceRequests.adminUsers",
+          label: "额外审批人员",
+          bottomHelpMessage: "填写 QQ 号；本群群主/管理员和机器人主人默认可审批",
+          component: "GTags",
+          componentProps: { allowAdd: true, allowDel: true },
+        },
+        {
           label: "告警配置",
           component: "SOFT_GROUP_BEGIN",
         },
