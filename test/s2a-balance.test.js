@@ -2,6 +2,7 @@ import assert from "node:assert/strict"
 import test from "node:test"
 import {
   addS2aUserBalance,
+  assertBalanceRequestEligible,
   getS2aUser,
   getS2aUserByEmail,
   parsePositiveAmount,
@@ -78,4 +79,10 @@ test("余额金额必须为正数并保留两位小数", () => {
   assert.equal(parsePositiveAmount("1.239"), 1.24)
   assert.throws(() => parsePositiveAmount("0"), /大于 0/)
   assert.throws(() => parsePositiveAmount("not-a-number"), /大于 0/)
+})
+
+test("当前余额大于 5 时不允许申请余额", () => {
+  assert.equal(assertBalanceRequestEligible({ balance: 5 }), 5)
+  assert.throws(() => assertBalanceRequestEligible({ balance: 5.01 }), /大于 5/)
+  assert.throws(() => assertBalanceRequestEligible({}), /无法读取 S2A 当前余额/)
 })

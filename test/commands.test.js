@@ -11,11 +11,13 @@ test("运维命令使用统一的无后端前缀名称", () => {
   assert.equal(matchedFunction("#账号配额"), "accountQuota")
   assert.equal(matchedFunction("#渠道状态"), "channelStatus")
   assert.equal(matchedFunction("#SLA"), "sla")
-  assert.equal(matchedFunction("#绑定账号 user@example.com"), "bindAccount")
-  assert.equal(matchedFunction("#验证码 123456"), "verifyEmailCode")
-  assert.equal(matchedFunction("#申请余额 10"), "requestBalance")
-  assert.equal(matchedFunction("#通过"), "approveBalanceRequest")
-  assert.equal(matchedFunction("#拒绝 BR-ABC"), "rejectBalanceRequest")
+  assert.equal(matchedFunction("#S2A绑定 user@example.com"), "bindAccount")
+  assert.equal(matchedFunction("#S2A验证码 123456"), "verifyEmailCode")
+  assert.equal(matchedFunction("#S2A申请余额 10"), "requestBalance")
+  assert.equal(matchedFunction("#S2A通过"), "approveBalanceRequest")
+  assert.equal(matchedFunction("#S2A拒绝 BR-ABC"), "rejectBalanceRequest")
+  assert.equal(matchedFunction("#绑定账号 user@example.com"), null)
+  assert.equal(matchedFunction("#申请余额 10"), null)
 })
 
 test("不再响应旧的后端或产品前缀命令", () => {

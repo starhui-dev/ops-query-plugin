@@ -39,6 +39,7 @@ import {
 } from "../lib/email-verification.js"
 import {
   addS2aUserBalance,
+  assertBalanceRequestEligible,
   getS2aUser,
   getS2aUserByEmail,
   parsePositiveAmount,
@@ -98,10 +99,10 @@ export class OpsQuery extends plugin {
         "#SLA：查询 Sub2API SLA",
         "#Codex雷达：获取 Codex 雷达最新速览图",
         "#Codex重置：查询最新 Codex 重置公告",
-        "#绑定账号 <邮箱>：发送邮箱验证码并提交 S2A 账号绑定申请",
-        "#验证码 <6位数字>：验证邮箱并生成绑定申请",
-        "#申请余额 <金额>：提交余额增加申请",
-        "管理员可直接回复申请消息 #通过 或 #拒绝",
+        "#S2A绑定 <邮箱>：发送邮箱验证码并提交 S2A 账号绑定申请",
+        "#S2A验证码 <6位数字>：验证邮箱并生成绑定申请",
+        "#S2A申请余额 <金额>：提交余额增加申请",
+        "管理员可直接回复申请消息 #S2A通过 或 #S2A拒绝",
       ].join("\n"),
     )
   }
@@ -109,8 +110,8 @@ export class OpsQuery extends plugin {
   async bindAccount() {
     const config = loadConfig()
     if (!(await this.ensureBalanceAccess(config))) return false
-    const argument = commandArgument(this.e, "绑定账号")
-    if (!argument) return this.reply("用法：#绑定账号 <邮箱>\n然后发送 #验证码 <6位数字>")
+    const argument = commandArgument(this.e, "S2A绑定")
+    if (!argument) return this.reply("用法：#S2A绑定 <邮箱>\n然后发送 #S2A验证码 <6位数字>")
 
     if (!config.balanceRequests.emailVerification.enabled) {
       return this.reply("邮箱验证码功能未启用，请联系管理员配置 SMTP")
@@ -160,14 +161,16 @@ export class OpsQuery extends plugin {
       removeEmailVerification(state, groupId, userId)
       return this.reply(`验证码发送失败：${safeError(error)}`)
     }
-    return this.reply(`验证码已发送到 ${maskEmail(email)}，10 分钟内有效。请发送 #验证码 <6位数字>`)
+    return this.reply(
+      `验证码已发送到 ${maskEmail(email)}，10 分钟内有效。请发送 #S2A验证码 <6位数字>`,
+    )
   }
 
   async verifyEmailCode() {
     const config = loadConfig()
     if (!(await this.ensureBalanceAccess(config))) return false
-    const argument = commandArgument(this.e, "验证码")
-    if (!argument) return this.reply("用法：#验证码 <6位数字>")
+    const argument = commandArgument(this.e, "S2A验证码")
+    if (!argument) return this.reply("用法：#S2A验证码 <6位数字>")
 
     const groupId = String(this.e.group_id)
     const userId = String(this.e.user_id)
@@ -204,7 +207,7 @@ export class OpsQuery extends plugin {
         `绑定账号申请 ${request.id}`,
         `申请人：${displayApplicant(this.e)}（QQ ${userId}）`,
         `S2A 邮箱：${maskEmail(request.email)}`,
-        "邮箱验证通过，请管理员直接回复本消息 #通过 或 #拒绝",
+        "邮箱验证通过，请管理员直接回复本消息 #S2A通过 或 #S2A拒绝",
       ].join("\n"),
     )
     const messageId = extractMessageId(sent)
@@ -218,8 +221,8 @@ export class OpsQuery extends plugin {
   async requestBalance() {
     const config = loadConfig()
     if (!(await this.ensureBalanceAccess(config))) return false
-    const argument = commandArgument(this.e, "申请余额")
-    if (!argument) return this.reply("用法：#申请余额 <金额> [备注]")
+    const argument = commandArgument(this.e, "S2A申请余额")
+    if (!argument) return this.reply("用法：#S2A申请余额 <金额> [备注]")
 
     const [rawAmount, ...reasonParts] = argument.split(/\s+/)
     let amount
@@ -237,10 +240,20 @@ export class OpsQuery extends plugin {
     const state = loadBalanceRequestState()
     const binding = getBinding(state, groupId, userId)
     if (!binding?.email) {
-      return this.reply("你还没有绑定 S2A 邮箱，请先使用 #绑定账号 <邮箱> 完成验证")
+      return this.reply("你还没有绑定 S2A 邮箱，请先使用 #S2A绑定 <邮箱> 完成验证")
     }
     if (hasPendingRequest(state, groupId, userId, "balance")) {
       return this.reply("你已有待审批的余额申请，请等待管理员处理")
+    }
+
+    let s2aUser
+    try {
+      s2aUser = await withProxy(selectProxy(config.proxy, "s2a"), fetchImpl =>
+        getS2aUserByEmail(config.s2a, binding.email, fetchImpl),
+      )
+      assertBalanceRequestEligible(s2aUser)
+    } catch (error) {
+      return this.reply(`余额申请资格校验失败：${safeError(error)}`)
     }
 
     const request = createBalanceRequest(state, {
@@ -260,7 +273,7 @@ export class OpsQuery extends plugin {
         `S2A 邮箱：${maskEmail(binding.email)}`,
         `申请增加：${amount}`,
         request.reason ? `备注：${request.reason}` : "",
-        "请管理员直接回复本消息 #通过 或 #拒绝",
+        "请管理员直接回复本消息 #S2A通过 或 #S2A拒绝",
       ]
         .filter(Boolean)
         .join("\n"),
@@ -288,7 +301,7 @@ export class OpsQuery extends plugin {
       return this.reply("只有本群管理员或机器人主人可以审批余额申请")
     }
 
-    const argument = commandArgument(this.e, approved ? "通过" : "拒绝")
+    const argument = commandArgument(this.e, approved ? "S2A通过" : "S2A拒绝")
     const state = loadBalanceRequestState()
     const target = await replyTargetInfo(this.e)
     const request = findRequest(state, {
@@ -300,8 +313,8 @@ export class OpsQuery extends plugin {
     if (!request) {
       return this.reply(
         approved
-          ? "未找到待审批申请，请直接回复申请消息 #通过，或使用 #通过 <申请编号>"
-          : "未找到待审批申请，请直接回复申请消息 #拒绝，或使用 #拒绝 <申请编号>",
+          ? "未找到待审批申请，请直接回复申请消息 #S2A通过，或使用 #S2A通过 <申请编号>"
+          : "未找到待审批申请，请直接回复申请消息 #S2A拒绝，或使用 #S2A拒绝 <申请编号>",
       )
     }
     if (request.status === "approving") {
