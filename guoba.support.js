@@ -180,7 +180,8 @@ export function supportGuoba() {
         {
           field: "balanceRequests.adminUsers",
           label: "额外审批人员",
-          bottomHelpMessage: "填写 QQ 号；本群群主/管理员和机器人主人默认可审批",
+          bottomHelpMessage:
+            "填写机器人管理员 QQ 号；机器人主人默认可审批，群主和群管理员无审批权限",
           component: "GTags",
           componentProps: { allowAdd: true, allowDel: true },
         },

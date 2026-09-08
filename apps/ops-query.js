@@ -12,10 +12,10 @@ import {
   queryS2aSla,
 } from "../lib/s2a-sla.js"
 import { checkGroupAccess, checkQueryAccess } from "../lib/access.js"
+import { isBalanceAdmin } from "../lib/balance-access.js"
 import {
   bindAccount as saveBinding,
   createBalanceRequest,
-  createBindingRequest,
   findRequest,
   findBindingByEmail,
   findBindingByAccount,
@@ -99,10 +99,11 @@ export class OpsQuery extends plugin {
         "#SLA：查询 Sub2API SLA",
         "#Codex雷达：获取 Codex 雷达最新速览图",
         "#Codex重置：查询最新 Codex 重置公告",
-        "#S2A绑定 <邮箱>：发送邮箱验证码并提交 S2A 账号绑定申请",
-        "#S2A验证码 <6位数字>：验证邮箱并生成绑定申请",
+        "#S2A绑定 <邮箱>：发送邮箱验证码，验证后直接绑定 S2A 账号",
+        "#S2A验证码 <6位数字>：验证邮箱并完成绑定",
+        "#S2A余额：查询已绑定 S2A 邮箱的当前余额",
         "#S2A申请余额 <金额>：提交余额增加申请",
-        "管理员可直接回复申请消息 #S2A通过 或 #S2A拒绝",
+        "机器人主人或配置的审批人员可回复申请消息 #S2A通过 或 #S2A拒绝",
       ].join("\n"),
     )
   }
@@ -125,10 +126,6 @@ export class OpsQuery extends plugin {
     if (binding?.email === email) {
       return this.reply(`你已绑定邮箱 ${maskEmail(email)}`)
     }
-    if (hasPendingRequest(state, groupId, userId, "binding")) {
-      return this.reply("你已有待审批的绑定申请，请等待管理员处理")
-    }
-
     let s2aUser
     try {
       s2aUser = await withProxy(selectProxy(config.proxy, "s2a"), fetchImpl =>
@@ -175,9 +172,6 @@ export class OpsQuery extends plugin {
     const groupId = String(this.e.group_id)
     const userId = String(this.e.user_id)
     const state = loadBalanceRequestState()
-    if (hasPendingRequest(state, groupId, userId, "binding")) {
-      return this.reply("你已有待审批的绑定申请，请等待管理员处理")
-    }
     const result = verifyEmailCode(state, groupId, userId, argument.split(/\s+/)[0])
     if (!result.ok) {
       saveBalanceRequestState(state)
@@ -193,29 +187,41 @@ export class OpsQuery extends plugin {
       saveBalanceRequestState(state)
       return this.reply("该 S2A 邮箱已绑定其他群成员，如需更换请联系管理员")
     }
-    const request = createBindingRequest(state, {
+    saveBinding(state, {
       groupId,
       userId,
       email: verification.email,
-      applicantName: verification.applicantName || displayApplicant(this.e),
-      sourceMessageId: verification.sourceMessageId || this.e.message_id,
+      approvedBy: "email-verification",
     })
     consumeEmailVerification(state, groupId, userId, verification)
     saveBalanceRequestState(state)
-    const sent = await this.reply(
-      [
-        `绑定账号申请 ${request.id}`,
-        `申请人：${displayApplicant(this.e)}（QQ ${userId}）`,
-        `S2A 邮箱：${maskEmail(request.email)}`,
-        "邮箱验证通过，请管理员直接回复本消息 #S2A通过 或 #S2A拒绝",
-      ].join("\n"),
+    return this.reply(
+      `邮箱验证成功，已绑定 ${maskEmail(verification.email)}。现在可以使用 #S2A余额 查询余额或使用 #S2A申请余额 申请增加余额`,
     )
-    const messageId = extractMessageId(sent)
-    if (messageId) {
-      setRequestMessageId(state, request.id, messageId)
-      saveBalanceRequestState(state)
+  }
+
+  async queryBalance() {
+    const config = loadConfig()
+    if (!(await this.ensureBalanceAccess(config))) return false
+
+    const groupId = String(this.e.group_id)
+    const userId = String(this.e.user_id)
+    const state = loadBalanceRequestState()
+    const binding = getBinding(state, groupId, userId)
+    if (!binding?.email) {
+      return this.reply("你还没有绑定 S2A 邮箱，请先使用 #S2A绑定 <邮箱> 完成验证")
     }
-    return true
+
+    try {
+      const user = await withProxy(selectProxy(config.proxy, "s2a"), fetchImpl =>
+        getS2aUserByEmail(config.s2a, binding.email, fetchImpl),
+      )
+      const balance = Number(user.balance)
+      if (!Number.isFinite(balance)) throw new Error("S2A 返回的余额无效")
+      return this.reply(`S2A 邮箱 ${maskEmail(binding.email)} 当前余额：${formatBalance(balance)}`)
+    } catch (error) {
+      return this.reply(`S2A 余额查询失败：${safeError(error)}`)
+    }
   }
 
   async requestBalance() {
@@ -273,7 +279,7 @@ export class OpsQuery extends plugin {
         `S2A 邮箱：${maskEmail(binding.email)}`,
         `申请增加：${amount}`,
         request.reason ? `备注：${request.reason}` : "",
-        "请管理员直接回复本消息 #S2A通过 或 #S2A拒绝",
+        "机器人主人或配置的审批人员请直接回复本消息 #S2A通过 或 #S2A拒绝",
       ]
         .filter(Boolean)
         .join("\n"),
@@ -298,7 +304,7 @@ export class OpsQuery extends plugin {
     const config = loadConfig()
     if (!(await this.ensureBalanceAccess(config))) return false
     if (!(await isBalanceAdmin(this.e, config.balanceRequests.adminUsers))) {
-      return this.reply("只有本群管理员或机器人主人可以审批余额申请")
+      return this.reply("只有机器人主人或配置的审批人员可以审批余额申请")
     }
 
     const argument = commandArgument(this.e, approved ? "S2A通过" : "S2A拒绝")
@@ -636,6 +642,10 @@ function safeError(error) {
   return message.replace(/(Bearer\s+|x-api-key[=:]?\s*)\S+/gi, "$1[已隐藏]")
 }
 
+function formatBalance(value) {
+  return Number(value).toFixed(2).replace(/\.00$/, "")
+}
+
 function commandArgument(event, command) {
   const text = eventText(event).trim()
   const match = text.match(new RegExp(`^#?${command}(?:\\s+([\\s\\S]*))?$`))
@@ -659,31 +669,6 @@ function displayApplicant(event) {
   return String(sender.card || sender.nickname || sender.name || event?.user_id || "未知用户")
     .replace(/[\r\n]/g, " ")
     .slice(0, 80)
-}
-
-async function isBalanceAdmin(event, configuredUsers) {
-  if (event?.isMaster) return true
-  const userId = String(event?.user_id ?? "")
-  if (configuredUsers.includes(userId)) return true
-  const sender = event?.sender || event?.member || {}
-  const role = String(sender.role || event?.role || "").toLowerCase()
-  if (sender.is_admin || sender.is_owner || ["admin", "administrator", "owner"].includes(role)) {
-    return true
-  }
-
-  const groupId = String(event?.group_id ?? "")
-  try {
-    const group = globalThis.Bot?.pickGroup?.(groupId)
-    const member = await group?.getMemberInfo?.(userId)
-    const memberRole = String(member?.role || "").toLowerCase()
-    return Boolean(
-      member?.is_admin ||
-      member?.is_owner ||
-      ["admin", "administrator", "owner"].includes(memberRole),
-    )
-  } catch {
-    return false
-  }
 }
 
 async function replyTargetInfo(event) {

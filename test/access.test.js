@@ -1,6 +1,7 @@
 import assert from "node:assert/strict"
 import test from "node:test"
 import { checkQueryAccess } from "../lib/access.js"
+import { isBalanceAdmin } from "../lib/balance-access.js"
 
 const access = { groupWhitelist: ["10001"], queryUsers: ["20001"] }
 
@@ -23,4 +24,11 @@ test("查询人员为空时只在白名单群放开，私聊拒绝", () => {
   assert.equal(checkQueryAccess({ user_id: 20002, group_id: 10002 }, openAccess).allowed, false)
   assert.equal(checkQueryAccess({ user_id: 20002 }, openAccess).allowed, false)
   assert.equal(checkQueryAccess({ isMaster: true }, openAccess).allowed, true)
+})
+
+test("余额审批只允许机器人主人或配置的机器人审批人员", () => {
+  assert.equal(isBalanceAdmin({ isMaster: true, user_id: 1 }, []), true)
+  assert.equal(isBalanceAdmin({ user_id: 20001, sender: { role: "admin" } }, [20001]), true)
+  assert.equal(isBalanceAdmin({ user_id: 20002, sender: { role: "admin" } }, []), false)
+  assert.equal(isBalanceAdmin({ user_id: 20003, sender: { role: "owner" } }, []), false)
 })

@@ -13,6 +13,7 @@ test("运维命令使用统一的无后端前缀名称", () => {
   assert.equal(matchedFunction("#SLA"), "sla")
   assert.equal(matchedFunction("#S2A绑定 user@example.com"), "bindAccount")
   assert.equal(matchedFunction("#S2A验证码 123456"), "verifyEmailCode")
+  assert.equal(matchedFunction("#S2A余额"), "queryBalance")
   assert.equal(matchedFunction("#S2A申请余额 10"), "requestBalance")
   assert.equal(matchedFunction("#S2A通过"), "approveBalanceRequest")
   assert.equal(matchedFunction("#S2A拒绝 BR-ABC"), "rejectBalanceRequest")
