@@ -24,11 +24,18 @@ function tempFile() {
 test("余额申请状态可以持久化绑定、申请和审批结果", () => {
   const file = tempFile()
   const state = emptyBalanceRequestState()
-  bindAccount(state, { groupId: "100", userId: "200", accountId: 7, approvedBy: "admin" })
+  bindAccount(state, {
+    groupId: "100",
+    userId: "200",
+    accountId: 7,
+    email: "user@example.com",
+    approvedBy: "admin",
+  })
   const request = createBalanceRequest(state, {
     groupId: "100",
     userId: "200",
     accountId: 7,
+    email: "user@example.com",
     amount: 12.5,
     applicantName: "测试用户",
     sourceMessageId: "message-0",
@@ -50,6 +57,7 @@ test("申请编号可以通过申请消息 ID 定位，拒绝会保存理由", (
     groupId: "100",
     userId: "200",
     accountId: 8,
+    email: "other@example.com",
     applicantName: "测试用户",
   })
   request.messageId = "message-1"

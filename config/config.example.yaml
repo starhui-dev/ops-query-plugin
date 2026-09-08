@@ -28,6 +28,14 @@ balanceRequests:
   enabled: true
   maxAmount: 100
   adminUsers: []
+  emailVerification:
+    enabled: false
+    smtpHost: ""
+    smtpPort: 465
+    smtpSecure: true
+    smtpUser: ""
+    smtpPassword: ""
+    from: ""
 
 alerts:
   enabled: false

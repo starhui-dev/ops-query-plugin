@@ -166,7 +166,7 @@ export function supportGuoba() {
         {
           field: "balanceRequests.enabled",
           label: "启用余额申请",
-          bottomHelpMessage: "群成员可绑定 S2A 用户账号并提交余额申请",
+          bottomHelpMessage: "群成员通过邮箱验证码绑定 S2A 账号并提交余额申请",
           component: "Switch",
         },
         {
@@ -183,6 +183,56 @@ export function supportGuoba() {
           bottomHelpMessage: "填写 QQ 号；本群群主/管理员和机器人主人默认可审批",
           component: "GTags",
           componentProps: { allowAdd: true, allowDel: true },
+        },
+        {
+          label: "邮箱验证码",
+          component: "SOFT_GROUP_BEGIN",
+        },
+        {
+          field: "balanceRequests.emailVerification.enabled",
+          label: "启用邮箱验证码",
+          bottomHelpMessage: "绑定 S2A 邮箱前发送验证码；需要可用的 SMTP 服务",
+          component: "Switch",
+        },
+        {
+          field: "balanceRequests.emailVerification.smtpHost",
+          label: "SMTP 地址",
+          bottomHelpMessage: "例如 smtp.qq.com 或 smtp.example.com",
+          component: "Input",
+          componentProps: { placeholder: "请输入 SMTP 主机" },
+        },
+        {
+          field: "balanceRequests.emailVerification.smtpPort",
+          label: "SMTP 端口",
+          component: "InputNumber",
+          required: true,
+          componentProps: { min: 1, max: 65535, step: 1 },
+        },
+        {
+          field: "balanceRequests.emailVerification.smtpSecure",
+          label: "启用 TLS",
+          bottomHelpMessage: "465 端口通常开启；587 端口通常关闭并使用 STARTTLS",
+          component: "Switch",
+        },
+        {
+          field: "balanceRequests.emailVerification.smtpUser",
+          label: "SMTP 用户",
+          component: "Input",
+          componentProps: { placeholder: "例如 bot@example.com" },
+        },
+        {
+          field: "balanceRequests.emailVerification.smtpPassword",
+          label: "SMTP 密码",
+          bottomHelpMessage: "留空保存会保留当前密码",
+          component: "InputPassword",
+          componentProps: { placeholder: "留空表示不修改" },
+        },
+        {
+          field: "balanceRequests.emailVerification.from",
+          label: "发件人邮箱",
+          bottomHelpMessage: "通常填写 SMTP 用户邮箱",
+          component: "Input",
+          componentProps: { placeholder: "例如 bot@example.com" },
         },
         {
           label: "告警配置",

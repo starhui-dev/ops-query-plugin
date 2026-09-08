@@ -119,6 +119,41 @@ test("锅巴可以配置余额申请", () => {
   })
 })
 
+test("邮箱验证码启用时必须配置 SMTP 和发件人", () => {
+  assert.throws(
+    () =>
+      validateConfig({
+        ...current,
+        balanceRequests: {
+          enabled: true,
+          maxAmount: 100,
+          adminUsers: [],
+          emailVerification: { enabled: true },
+        },
+      }),
+    /必须填写 SMTP 地址/,
+  )
+  assert.doesNotThrow(() =>
+    validateConfig({
+      ...current,
+      balanceRequests: {
+        enabled: true,
+        maxAmount: 100,
+        adminUsers: [],
+        emailVerification: {
+          enabled: true,
+          smtpHost: "smtp.example.com",
+          smtpPort: 465,
+          smtpSecure: true,
+          smtpUser: "bot@example.com",
+          smtpPassword: "app-password",
+          from: "bot@example.com",
+        },
+      },
+    }),
+  )
+})
+
 test("校验 SLA 告警及群白名单", () => {
   const valid = {
     ...current,

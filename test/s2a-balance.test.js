@@ -1,6 +1,11 @@
 import assert from "node:assert/strict"
 import test from "node:test"
-import { addS2aUserBalance, getS2aUser, parsePositiveAmount } from "../lib/s2a-balance.js"
+import {
+  addS2aUserBalance,
+  getS2aUser,
+  getS2aUserByEmail,
+  parsePositiveAmount,
+} from "../lib/s2a-balance.js"
 
 const config = {
   baseUrl: "https://s2a.example.com",
@@ -29,6 +34,44 @@ test("S2A 用户查询和增加余额使用管理接口", async () => {
     operation: "add",
     notes: "申请 BR-1",
   })
+})
+
+test("可以用邮箱精确查询 S2A 用户", async () => {
+  const requests = []
+  const user = await getS2aUserByEmail(config, "User@Example.com", async (url, options) => {
+    requests.push({ url: String(url), options })
+    return new Response(
+      JSON.stringify({
+        code: 0,
+        data: { items: [{ id: 7, email: "user@example.com", username: "user" }] },
+      }),
+      { status: 200, headers: { "content-type": "application/json" } },
+    )
+  })
+  const parsed = new URL(requests[0].url)
+  assert.equal(parsed.pathname, "/api/v1/admin/users")
+  assert.equal(parsed.searchParams.get("search"), "user@example.com")
+  assert.equal(user.id, 7)
+  assert.equal(user.email, "user@example.com")
+})
+
+test("邮箱查询不会接受模糊匹配到的其他邮箱", async () => {
+  await assert.rejects(
+    () =>
+      getS2aUserByEmail(
+        config,
+        "user@example.com",
+        async () =>
+          new Response(
+            JSON.stringify({
+              code: 0,
+              data: { items: [{ id: 7, email: "user2@example.com" }] },
+            }),
+            { status: 200 },
+          ),
+      ),
+    /没有找到该邮箱/,
+  )
 })
 
 test("余额金额必须为正数并保留两位小数", () => {

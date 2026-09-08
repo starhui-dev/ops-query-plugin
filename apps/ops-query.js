@@ -17,6 +17,7 @@ import {
   createBalanceRequest,
   createBindingRequest,
   findRequest,
+  findBindingByEmail,
   findBindingByAccount,
   getBinding,
   hasPendingRequest,
@@ -29,10 +30,18 @@ import {
   setRequestMessageId,
 } from "../lib/balance-requests.js"
 import {
+  consumeEmailVerification,
+  createEmailVerification,
+  maskEmail,
+  removeEmailVerification,
+  sendVerificationEmail,
+  verifyEmailCode,
+} from "../lib/email-verification.js"
+import {
   addS2aUserBalance,
   getS2aUser,
+  getS2aUserByEmail,
   parsePositiveAmount,
-  parseS2aUserId,
 } from "../lib/s2a-balance.js"
 import {
   buildMentionSegments,
@@ -89,7 +98,8 @@ export class OpsQuery extends plugin {
         "#SLA：查询 Sub2API SLA",
         "#Codex雷达：获取 Codex 雷达最新速览图",
         "#Codex重置：查询最新 Codex 重置公告",
-        "#绑定账号 <S2A用户ID>：提交 S2A 账号绑定申请",
+        "#绑定账号 <邮箱>：发送邮箱验证码并提交 S2A 账号绑定申请",
+        "#验证码 <6位数字>：验证邮箱并生成绑定申请",
         "#申请余额 <金额>：提交余额增加申请",
         "管理员可直接回复申请消息 #通过 或 #拒绝",
       ].join("\n"),
@@ -100,56 +110,103 @@ export class OpsQuery extends plugin {
     const config = loadConfig()
     if (!(await this.ensureBalanceAccess(config))) return false
     const argument = commandArgument(this.e, "绑定账号")
-    if (!argument)
-      return this.reply("用法：#绑定账号 <S2A 用户账号 ID>\n绑定申请需管理员回复该消息 #通过")
+    if (!argument) return this.reply("用法：#绑定账号 <邮箱>\n然后发送 #验证码 <6位数字>")
 
-    let accountId
-    try {
-      accountId = parseS2aUserId(argument.split(/\s+/)[0])
-    } catch (error) {
-      return this.reply(error.message)
+    if (!config.balanceRequests.emailVerification.enabled) {
+      return this.reply("邮箱验证码功能未启用，请联系管理员配置 SMTP")
     }
 
+    const email = argument.split(/\s+/)[0].trim().toLowerCase()
     const groupId = String(this.e.group_id)
     const userId = String(this.e.user_id)
     const state = loadBalanceRequestState()
     const binding = getBinding(state, groupId, userId)
-    if (binding?.accountId === accountId) {
-      return this.reply(`你已绑定 S2A 用户账号 #${accountId}`)
+    if (binding?.email === email) {
+      return this.reply(`你已绑定邮箱 ${maskEmail(email)}`)
     }
     if (hasPendingRequest(state, groupId, userId, "binding")) {
       return this.reply("你已有待审批的绑定申请，请等待管理员处理")
     }
-    const accountBinding = findBindingByAccount(state, accountId)
+
+    let s2aUser
+    try {
+      s2aUser = await withProxy(selectProxy(config.proxy, "s2a"), fetchImpl =>
+        getS2aUserByEmail(config.s2a, email, fetchImpl),
+      )
+    } catch (error) {
+      return this.reply(`S2A 邮箱校验失败：${safeError(error)}`)
+    }
+
+    const accountBinding =
+      findBindingByEmail(state, email) || findBindingByAccount(state, s2aUser.id)
     if (
       accountBinding &&
       (accountBinding.groupId !== groupId || accountBinding.userId !== userId)
     ) {
-      return this.reply("该 S2A 用户账号已绑定其他群成员，如需更换请联系管理员")
+      return this.reply("该 S2A 邮箱已绑定其他群成员，如需更换请联系管理员")
     }
 
     try {
-      await withProxy(selectProxy(config.proxy, "s2a"), fetchImpl =>
-        getS2aUser(config.s2a, accountId, fetchImpl),
-      )
+      const { code } = createEmailVerification(state, {
+        groupId,
+        userId,
+        email,
+        accountId: s2aUser.id,
+        applicantName: displayApplicant(this.e),
+        sourceMessageId: this.e.message_id,
+      })
+      await sendVerificationEmail(config.balanceRequests.emailVerification, email, code)
+      saveBalanceRequestState(state)
     } catch (error) {
-      return this.reply(`S2A 用户账号校验失败：${safeError(error)}`)
+      removeEmailVerification(state, groupId, userId)
+      return this.reply(`验证码发送失败：${safeError(error)}`)
     }
+    return this.reply(`验证码已发送到 ${maskEmail(email)}，10 分钟内有效。请发送 #验证码 <6位数字>`)
+  }
 
+  async verifyEmailCode() {
+    const config = loadConfig()
+    if (!(await this.ensureBalanceAccess(config))) return false
+    const argument = commandArgument(this.e, "验证码")
+    if (!argument) return this.reply("用法：#验证码 <6位数字>")
+
+    const groupId = String(this.e.group_id)
+    const userId = String(this.e.user_id)
+    const state = loadBalanceRequestState()
+    if (hasPendingRequest(state, groupId, userId, "binding")) {
+      return this.reply("你已有待审批的绑定申请，请等待管理员处理")
+    }
+    const result = verifyEmailCode(state, groupId, userId, argument.split(/\s+/)[0])
+    if (!result.ok) {
+      saveBalanceRequestState(state)
+      return this.reply(result.message)
+    }
+    const verification = result.verification
+    const accountBinding = findBindingByEmail(state, verification.email)
+    if (
+      accountBinding &&
+      (accountBinding.groupId !== groupId || accountBinding.userId !== userId)
+    ) {
+      consumeEmailVerification(state, groupId, userId, verification)
+      saveBalanceRequestState(state)
+      return this.reply("该 S2A 邮箱已绑定其他群成员，如需更换请联系管理员")
+    }
     const request = createBindingRequest(state, {
       groupId,
       userId,
-      accountId,
-      applicantName: displayApplicant(this.e),
-      sourceMessageId: this.e.message_id,
+      email: verification.email,
+      accountId: verification.accountId,
+      applicantName: verification.applicantName || displayApplicant(this.e),
+      sourceMessageId: verification.sourceMessageId || this.e.message_id,
     })
+    consumeEmailVerification(state, groupId, userId, verification)
     saveBalanceRequestState(state)
     const sent = await this.reply(
       [
         `绑定账号申请 ${request.id}`,
         `申请人：${displayApplicant(this.e)}（QQ ${userId}）`,
-        `S2A 用户账号：#${accountId}`,
-        "请管理员直接回复本消息 #通过 或 #拒绝",
+        `S2A 邮箱：${maskEmail(request.email)}`,
+        "邮箱验证通过，请管理员直接回复本消息 #通过 或 #拒绝",
       ].join("\n"),
     )
     const messageId = extractMessageId(sent)
@@ -181,8 +238,8 @@ export class OpsQuery extends plugin {
     const userId = String(this.e.user_id)
     const state = loadBalanceRequestState()
     const binding = getBinding(state, groupId, userId)
-    if (!binding) {
-      return this.reply("你还没有绑定 S2A 账号，请先使用 #绑定账号 <S2A用户ID>")
+    if (!binding?.email) {
+      return this.reply("你还没有绑定 S2A 邮箱，请先使用 #绑定账号 <邮箱> 完成验证")
     }
     if (hasPendingRequest(state, groupId, userId, "balance")) {
       return this.reply("你已有待审批的余额申请，请等待管理员处理")
@@ -192,6 +249,7 @@ export class OpsQuery extends plugin {
       groupId,
       userId,
       accountId: binding.accountId,
+      email: binding.email,
       amount,
       reason: reasonParts.join(" ").slice(0, 200),
       applicantName: displayApplicant(this.e),
@@ -202,7 +260,7 @@ export class OpsQuery extends plugin {
       [
         `余额申请 ${request.id}`,
         `申请人：${displayApplicant(this.e)}（QQ ${userId}）`,
-        `S2A 用户账号：#${binding.accountId}`,
+        `S2A 邮箱：${maskEmail(binding.email)}`,
         `申请增加：${amount}`,
         request.reason ? `备注：${request.reason}` : "",
         "请管理员直接回复本消息 #通过 或 #拒绝",
@@ -275,23 +333,41 @@ export class OpsQuery extends plugin {
     saveBalanceRequestState(state)
     try {
       if (request.kind === "binding") {
-        await withProxy(selectProxy(config.proxy, "s2a"), fetchImpl =>
-          getS2aUser(config.s2a, request.accountId, fetchImpl),
+        const s2aUser = await withProxy(selectProxy(config.proxy, "s2a"), fetchImpl =>
+          request.email
+            ? getS2aUserByEmail(config.s2a, request.email, fetchImpl)
+            : getS2aUser(config.s2a, request.accountId, fetchImpl),
         )
-        const accountBinding = findBindingByAccount(state, request.accountId)
+        request.accountId = s2aUser.id
+        request.email = String(s2aUser.email || request.email || "")
+          .trim()
+          .toLowerCase()
+        if (!request.email) throw new Error("S2A 用户资料缺少邮箱，无法完成绑定")
+        const accountBinding =
+          findBindingByEmail(state, request.email) || findBindingByAccount(state, request.accountId)
         if (
           accountBinding &&
           (accountBinding.groupId !== request.groupId || accountBinding.userId !== request.userId)
         ) {
-          throw new Error("该 S2A 用户账号已绑定其他群成员")
+          throw new Error("该 S2A 邮箱已绑定其他群成员")
         }
         saveBinding(state, {
           groupId: request.groupId,
           userId: request.userId,
           accountId: request.accountId,
+          email: request.email,
           approvedBy: String(this.e.user_id),
         })
       } else {
+        const s2aUser = await withProxy(selectProxy(config.proxy, "s2a"), fetchImpl =>
+          request.email
+            ? getS2aUserByEmail(config.s2a, request.email, fetchImpl)
+            : getS2aUser(config.s2a, request.accountId, fetchImpl),
+        )
+        request.accountId = s2aUser.id
+        request.email = String(s2aUser.email || request.email || "")
+          .trim()
+          .toLowerCase()
         await withProxy(selectProxy(config.proxy, "s2a"), fetchImpl =>
           addS2aUserBalance(
             config.s2a,
@@ -307,8 +383,8 @@ export class OpsQuery extends plugin {
       saveBalanceRequestState(state)
       const result =
         request.kind === "binding"
-          ? `已通过绑定申请 ${request.id}，QQ ${request.userId} 已绑定 S2A 用户账号 #${request.accountId}`
-          : `已通过申请 ${request.id}，S2A 用户账号 #${request.accountId} 已增加余额 ${request.amount}`
+          ? `已通过绑定申请 ${request.id}，QQ ${request.userId} 已绑定邮箱 ${maskEmail(request.email)}`
+          : `已通过申请 ${request.id}，S2A 邮箱 ${maskEmail(request.email)} 已增加余额 ${request.amount}`
       await notifyApplicant(request, result)
       return this.reply(result)
     } catch (error) {
