@@ -239,7 +239,7 @@ test("拒绝无效配置", () => {
         ...current,
         alerts: {
           ...current.alerts,
-          accounts: [{ account: "openai:16", thresholdPercent: 20 }],
+          accounts: [{ account: "openai:not-an-id", thresholdPercent: 20 }],
         },
       }),
     /必须选择有效的额度账号/,

@@ -47,7 +47,7 @@ function zhipuAccount(id = 24) {
   }
 }
 
-test("分页查询 S2A 上支持额度的 Key 账号并排除 OAuth", async () => {
+test("分页查询 S2A 上全部有效账号，不按类型限制", async () => {
   const originalFetch = globalThis.fetch
   const requests = []
   globalThis.fetch = async (url, options) => {
@@ -77,7 +77,7 @@ test("分页查询 S2A 上支持额度的 Key 账号并排除 OAuth", async () =
     const accounts = await listS2aQuotaAccounts(config)
     assert.deepEqual(
       accounts.map(item => item.id),
-      [26, 24],
+      [1, 9, 23, 26, 24, 25],
     )
     assert.equal(requests.length, 2)
     assert.equal(new URL(requests[0].url).searchParams.get("platform"), null)
@@ -87,13 +87,23 @@ test("分页查询 S2A 上支持额度的 Key 账号并排除 OAuth", async () =
   }
 })
 
-test("锅巴只生成 S2A Key 账号选项", () => {
+test("锅巴只生成有快照额度的 S2A 账号选项", () => {
   assert.deepEqual(
     buildS2aQuotaAccountOptions([
-      { id: 16, name: "Codex Pro", platform: "openai", type: "oauth" },
+      {
+        id: 16,
+        name: "Codex Pro",
+        platform: "openai",
+        type: "oauth",
+        extra: { codex_5h_used_percent: 10 },
+      },
+      { id: 17, name: "无额度 OpenAI", platform: "openai", type: "apikey" },
       kimiAccount(),
     ]),
-    [{ label: "S2A · Kimi · Kimi Code 订阅", value: "s2a:kimi:26" }],
+    [
+      { label: "S2A · OpenAI · Codex Pro", value: "s2a:openai:16" },
+      { label: "S2A · Kimi · Kimi Code 订阅", value: "s2a:kimi:26" },
+    ],
   )
 })
 
@@ -139,6 +149,170 @@ test("按平台解析 S2A Key 额度窗口并过滤没有额度的账号", async
     )
     assert.equal(kimi.source, "s2a")
     assert.equal(kimi.account.source, "s2a")
+  } finally {
+    globalThis.fetch = originalFetch
+  }
+})
+
+test("S2A OpenAI OAuth 使用专用 quota 接口，API Key 无额度时隐藏", async () => {
+  const originalFetch = globalThis.fetch
+  const requests = []
+  globalThis.fetch = async (url, options) => {
+    const parsed = new URL(url)
+    requests.push(parsed.pathname)
+    if (parsed.pathname === "/api/v1/admin/accounts") {
+      return jsonResponse({
+        code: 0,
+        data: {
+          items: [
+            { id: 16, name: "OpenAI OAuth", platform: "openai", type: "oauth" },
+            { id: 17, name: "OpenAI API Key", platform: "openai", type: "apikey" },
+          ],
+          pages: 1,
+        },
+      })
+    }
+    if (parsed.pathname === "/api/v1/admin/openai/accounts/16/quota") {
+      return jsonResponse({
+        code: 0,
+        data: {
+          plan_type: "pro",
+          rate_limit: {
+            primary_window: { used_percent: 25, limit_window_seconds: 18000 },
+          },
+        },
+      })
+    }
+    if (parsed.pathname === "/api/v1/admin/openai/accounts/17/quota") {
+      return jsonResponse({ code: 0, data: {} })
+    }
+    throw new Error(`unexpected request: ${parsed.pathname}`)
+  }
+
+  try {
+    const results = await queryS2aQuota(config)
+    assert.deepEqual(
+      results.map(result => result.account.id),
+      [16],
+    )
+    assert.equal(results[0].plan, "pro")
+    assert.deepEqual(
+      results[0].windows.map(window => [window.label, window.usedPercent]),
+      [["Codex 5 小时", 25]],
+    )
+    assert.deepEqual(requests, [
+      "/api/v1/admin/accounts",
+      "/api/v1/admin/openai/accounts/16/quota",
+      "/api/v1/admin/openai/accounts/17/quota",
+    ])
+  } finally {
+    globalThis.fetch = originalFetch
+  }
+})
+
+test("S2A DeepSeek 显示零余额和多币种余额，MiniMax 无额度时隐藏", async () => {
+  const originalFetch = globalThis.fetch
+  globalThis.fetch = async url => {
+    const path = new URL(url).pathname
+    if (path === "/api/v1/admin/accounts") {
+      return jsonResponse({
+        code: 0,
+        data: {
+          items: [
+            { id: 42, name: "DeepSeek", platform: "deepseek", type: "apikey" },
+            { id: 43, name: "MiniMax", platform: "minimax", type: "apikey" },
+          ],
+          pages: 1,
+        },
+      })
+    }
+    if (path === "/api/v1/admin/cn-providers/accounts/42/balance") {
+      return jsonResponse({
+        code: 0,
+        data: {
+          provider: "deepseek",
+          success: true,
+          balance: 12.5,
+          currency: "CNY",
+          balances: [
+            { currency: "CNY", balance: 12.5 },
+            { currency: "USD", balance: 0 },
+          ],
+          available: true,
+        },
+      })
+    }
+    if (path === "/api/v1/admin/cn-providers/accounts/43/quota") {
+      return jsonResponse({ code: 0, data: { provider: "minimax", success: true, tiers: [] } })
+    }
+    throw new Error(`unexpected request: ${path}`)
+  }
+
+  try {
+    const results = await queryS2aQuota(config)
+    assert.deepEqual(
+      results.map(result => result.account.id),
+      [42],
+    )
+    assert.deepEqual(
+      results[0].windows.map(window => [window.label, window.balance, window.currency]),
+      [
+        ["余额 CNY", 12.5, "CNY"],
+        ["余额 USD", 0, "USD"],
+      ],
+    )
+  } finally {
+    globalThis.fetch = originalFetch
+  }
+})
+
+test("S2A API Key 的本地额度字段可直接展示，无本地或远程额度则隐藏", async () => {
+  const originalFetch = globalThis.fetch
+  const paths = []
+  globalThis.fetch = async url => {
+    const path = new URL(url).pathname
+    paths.push(path)
+    if (path === "/api/v1/admin/accounts") {
+      return jsonResponse({
+        code: 0,
+        data: {
+          items: [
+            {
+              id: 50,
+              name: "本地限额 Key",
+              platform: "openai",
+              type: "apikey",
+              quota_limit: 100,
+              quota_used: 25,
+              quota_daily_limit: 10,
+              quota_daily_used: 0,
+            },
+            { id: 51, name: "无额度 Key", platform: "openai", type: "apikey" },
+          ],
+          pages: 1,
+        },
+      })
+    }
+    if (path === "/api/v1/admin/openai/accounts/51/quota") {
+      return jsonResponse({ code: 0, data: {} })
+    }
+    throw new Error(`unexpected request: ${path}`)
+  }
+
+  try {
+    const results = await queryS2aQuota(config)
+    assert.deepEqual(
+      results.map(result => result.account.id),
+      [50],
+    )
+    assert.deepEqual(
+      results[0].windows.map(window => [window.label, window.usedPercent, window.detail]),
+      [
+        ["总额度", 25, "用量 25 / 100"],
+        ["每日", 0, "用量 0 / 10"],
+      ],
+    )
+    assert.deepEqual(paths, ["/api/v1/admin/accounts", "/api/v1/admin/openai/accounts/51/quota"])
   } finally {
     globalThis.fetch = originalFetch
   }

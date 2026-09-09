@@ -2,6 +2,7 @@ import assert from "node:assert/strict"
 import test from "node:test"
 import {
   getProviderAuthFiles,
+  listCpaQuotaAccountOptions,
   listCpaQuotaAccounts,
   parseApiCallResult,
   queryCpaQuota,
@@ -77,6 +78,25 @@ test("CPA 列出全部支持配额且未停用的 OAuth 提供商", async () => 
   ])
   assert.equal(new URL(requests[0].url).pathname, "/v0/management/auth-files")
   assert.equal(requests[0].options.headers.Authorization, "Bearer secret")
+})
+
+test("CPA 锅巴账号选项只包含有额度信息的账号", async () => {
+  const files = [
+    { provider: "codex", auth_index: "codex-a" },
+    { provider: "codex", auth_index: "codex-empty" },
+  ]
+  const options = await listCpaQuotaAccountOptions(
+    config,
+    createCpaFetch(files, request => {
+      if (request.auth_index === "codex-empty") return {}
+      return {
+        rate_limit: {
+          primary_window: { used_percent: 10, limit_window_seconds: 18000 },
+        },
+      }
+    }),
+  )
+  assert.deepEqual(options, [{ label: "CPA · Codex · codex-a", value: "cpa:codex:codex-a" }])
 })
 
 test("CPA 查询 Codex 全部额度窗口", async () => {
@@ -331,23 +351,26 @@ test("CPA 查询 xAI 时省略的周用量按 0% 展示", async () => {
     config,
     "Asia/Shanghai",
     [{ source: "cpa", platform: "xai", accountId: "xai:1" }],
-    createCpaFetch([{ provider: "xai", auth_index: "xai:1", email: "xai@example.com" }], request => {
-      if (request.url.includes("format=credits")) {
+    createCpaFetch(
+      [{ provider: "xai", auth_index: "xai:1", email: "xai@example.com" }],
+      request => {
+        if (request.url.includes("format=credits")) {
+          return {
+            config: {
+              currentPeriod: { type: "USAGE_PERIOD_TYPE_WEEKLY", end: "2026-08-27T07:45:00Z" },
+            },
+          }
+        }
         return {
           config: {
-            currentPeriod: { type: "USAGE_PERIOD_TYPE_WEEKLY", end: "2026-08-27T07:45:00Z" },
+            currentPeriod: { type: "USAGE_PERIOD_TYPE_MONTHLY", end: "2026-08-31T16:00:00Z" },
+            monthlyLimit: {},
+            onDemandCap: {},
+            on_demand_enabled: false,
           },
         }
-      }
-      return {
-        config: {
-          currentPeriod: { type: "USAGE_PERIOD_TYPE_MONTHLY", end: "2026-08-31T16:00:00Z" },
-          monthlyLimit: {},
-          onDemandCap: {},
-          on_demand_enabled: false,
-        },
-      }
-    }),
+      },
+    ),
   )
 
   assert.equal(results[0].error, undefined)
@@ -358,7 +381,7 @@ test("CPA 查询 xAI 时省略的周用量按 0% 展示", async () => {
   assert.equal(results[0].windows[0].resetAt.toISOString(), "2026-08-27T07:45:00.000Z")
 })
 
-test("CPA OAuth 查询失败会保留账号级错误", async () => {
+test("CPA 查询失败且没有额度信息时隐藏账号", async () => {
   const results = await queryCpaQuota(
     config,
     "Asia/Shanghai",
@@ -369,8 +392,7 @@ test("CPA OAuth 查询失败会保留账号级错误", async () => {
     })),
   )
 
-  assert.match(results[0].error, /凭据已失效.*重新登录/)
-  assert.deepEqual(results[0].windows, [])
+  assert.deepEqual(results, [])
 })
 
 test("CPA 按提供商和 auth_index 选择账号", () => {

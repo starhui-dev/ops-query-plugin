@@ -19,7 +19,7 @@ function quotaResult(accountId, remainingPercent, name = `account-${accountId}`,
   }
 }
 
-test("解析 CPA OAuth 与 S2A Key 额度告警规则", () => {
+test("解析 CPA 与 S2A 多类型额度告警规则", () => {
   assert.deepEqual(parseAlertAccount({ account: "cpa:claude:claude-a" }), {
     source: "cpa",
     platform: "claude",
@@ -50,8 +50,16 @@ test("解析 CPA OAuth 与 S2A Key 额度告警规则", () => {
     platform: "xai",
     accountId: "23",
   })
-  assert.equal(parseAlertAccount({ account: "gemini:23" }), null)
-  assert.equal(parseAlertAccount({ account: "openai:16" }), null)
+  assert.deepEqual(parseAlertAccount({ account: "gemini:23" }), {
+    source: "s2a",
+    platform: "gemini",
+    accountId: 23,
+  })
+  assert.deepEqual(parseAlertAccount({ account: "openai:16" }), {
+    source: "s2a",
+    platform: "openai",
+    accountId: 16,
+  })
   assert.equal(parseAlertAccount({ account: "openai:not-an-id" }), null)
 })
 

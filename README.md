@@ -1,20 +1,21 @@
 # ops-query-plugin
 
-面向 TRSS Yunzai 的运维查询与告警插件，集中展示 CLIProxyAPI（CPA）OAuth 与
-Sub2API（S2A）Key 账号额度、S2A 渠道状态和 SLA，并订阅 Codex 重置公告。
+面向 TRSS Yunzai 的运维查询与告警插件，集中展示 CLIProxyAPI（CPA）与
+Sub2API（S2A）账号额度、S2A 渠道状态和 SLA，并订阅 Codex 重置公告。
 
 状态消息默认渲染为图片：随机动漫背景加载失败时自动使用本地备用图，信息区采用透明
 毛玻璃卡片，避免 QQ 将邮箱等内容误识别为链接。
 
 ## 功能
 
-- 统一查看 CPA Antigravity、Claude、Codex、Kimi、xAI OAuth 与 S2A Kimi／Zhipu GLM
-  Key 账号额度，展示套餐、剩余百分比和重置时间；S2A OAuth 账号不参与额度查询。
+- 统一查看 CPA 与 S2A 的全部账号，OAuth、API Key 等类型均可查询；仅展示能返回额度窗口
+  或余额信息的账号，支持 OpenAI、Anthropic、Grok、Kimi、Zhipu GLM、DeepSeek、MiniMax
+  等平台，并展示套餐、剩余百分比、余额和重置时间。
 - 支持切换 S2A V1 / V2 监控：V1 展示主动探测延迟、Ping、可用率和检测记录；V2
   展示真实请求的成功率、首 Token 延迟、吞吐、缓存率、健康脉冲和模型排行。
 - 获取 Codex 雷达站发布的最新速览图。
 - 查询 Codex 最新重置公告和当前重置预测；发现新的已确认公告时向指定群聊推送通知。
-- 按 CPA OAuth 或 S2A Key 账号设置独立额度阈值，向指定群聊发送图片告警并支持不提醒、
+- 按 CPA/S2A 有额度账号设置独立额度阈值，向指定群聊发送图片告警并支持不提醒、
   @指定用户或@全体。
 - 按统计窗口监控 Sub2API SLA，排除余额不足、配额超限等业务限制，低于阈值时发送
   图片告警。
@@ -58,7 +59,7 @@ pnpm install --prod --frozen-lockfile
 
 | 命令                         | 作用                                |
 | ---------------------------- | ----------------------------------- |
-| `#账号额度`                  | 查询 CPA OAuth 与 S2A Key 账号额度  |
+| `#账号额度`                  | 查询 CPA/S2A 全部有额度信息的账号   |
 | `#渠道状态`                  | 查询 S2A 渠道监控                   |
 | `#SLA`                       | 查询 Sub2API SLA                    |
 | `#Codex雷达`                 | 获取 Codex 雷达最新速览图           |
@@ -74,8 +75,9 @@ pnpm install --prod --frozen-lockfile
 
 Codex 重置命令不区分英文字母大小写，并允许在 `Codex` 与中文命令词之间添加空格。
 
-CPA OAuth 额度通过 CLIProxyAPI Management API 使用各账号对应的上游配额接口实时查询；
-Kimi 和 Zhipu GLM Key 额度来自 S2A 在账号被调用时记录的快照，可能有分钟级滞后。
+CPA 额度通过 CLIProxyAPI Management API 使用各账号对应的上游配额接口实时查询；S2A 优先使用
+账号快照，并按平台调用专用 quota/balance 接口补充 OpenAI、Grok、Kimi、Zhipu GLM、DeepSeek
+和 MiniMax 等数据。没有返回可识别额度窗口或余额的账号会被隐藏。
 CPA 账号名称优先使用认证文件的备注（`note`），其次使用 `label`，未设置时才显示脱敏邮箱。
 
 ## 配置
@@ -103,9 +105,9 @@ CPA 账号名称优先使用认证文件的备注（`note`），其次使用 `la
 阈值以上后再次降低才会重新提醒。额度告警与 `#账号额度` 使用同一份采集逻辑，按账号
 全部额度窗口中的最低剩余比例判断。
 
-升级后，原有的 S2A OpenAI／Anthropic OAuth 告警账号 ID 无法映射到 CPA `auth_index`，
-会被忽略；请先填写 CPA 配置，再在锅巴中重新选择对应 CPA OAuth 账号。S2A OAuth 不再
-采集额度；S2A Kimi 和 Zhipu GLM Key 告警配置不受影响。
+升级后，原有告警账号引用建议在锅巴中重新选择。S2A 账号引用格式为
+`s2a:<平台>:<数字 ID>`，只要该账号仍能返回额度窗口或余额即可继续告警；没有额度信息的账号
+不会出现在账号额度和告警账号选项中。
 
 Codex 重置订阅使用 [Codex Resets 公共 API](https://codex-resets.com/api/docs)，只推送新的
 已确认重置公告，不推送 AI 预测。首次启用只记录当前最新公告，不补发历史内容；最后处理的
@@ -155,8 +157,8 @@ SLA 告警即可使用。
 - 锅巴读取配置时不会回传 CPA Management Key 或 S2A Admin API Key；密钥输入留空保存
   会保留原值。
 - 锅巴不会回传代理地址，因为地址中可能包含代理认证信息。
-- OAuth 凭据由 CPA 管理，Key 账号由 S2A 管理；本插件只读取账号清单并查询额度，不展示
-  上游凭据内容。
+- CPA 与 S2A 的 OAuth、API Key 等凭据仍由对应平台管理；本插件只读取账号清单并查询额度，
+  不展示上游凭据内容。
 - 查询权限不是 CPA/S2A 服务端鉴权的替代品，仍应限制管理接口的网络访问范围。
 
 ## 开发与验证
@@ -166,8 +168,8 @@ pnpm install
 pnpm check
 ```
 
-测试覆盖查询权限、配置校验、CPA OAuth 与 S2A Key 账号额度及告警、重置订阅、SLA
-告警，以及 S2A V1 渠道历史与 V2 聚合指标处理。
+测试覆盖查询权限、配置校验、CPA/S2A 多类型账号额度及告警、余额、多币种余额、重置订阅、
+SLA 告警，以及 S2A V1 渠道历史与 V2 聚合指标处理。
 
 ## 上游项目
 

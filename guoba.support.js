@@ -1,5 +1,5 @@
 import { getGuobaConfig, loadConfig, updateConfig } from "./lib/config.js"
-import { listCpaQuotaAccounts } from "./lib/cpa-quota.js"
+import { listCpaQuotaAccountOptions } from "./lib/cpa-quota.js"
 import { selectProxy, withProxy } from "./lib/proxy.js"
 import { listS2aQuotaAccountOptions } from "./lib/s2a-quota.js"
 
@@ -36,7 +36,7 @@ export function supportGuoba() {
         {
           field: "cpa.managementKey",
           label: "Management Key",
-          bottomHelpMessage: "用于查询 CPA OAuth 账号额度；留空保存会保留当前密钥",
+          bottomHelpMessage: "用于查询 CPA 账号额度；留空保存会保留当前密钥",
           component: "InputPassword",
           componentProps: { placeholder: "留空表示不修改" },
         },
@@ -107,7 +107,7 @@ export function supportGuoba() {
         {
           field: "proxy.s2aEnabled",
           label: "S2A 查询与告警",
-          bottomHelpMessage: "S2A Key 额度、渠道状态、SLA、账号列表和相关告警走代理",
+          bottomHelpMessage: "S2A 额度、渠道状态、SLA、账号列表和相关告警走代理",
           component: "Switch",
         },
         {
@@ -281,7 +281,7 @@ export function supportGuoba() {
         {
           field: "alerts.accounts",
           label: "监控账号",
-          bottomHelpMessage: "每个 CPA OAuth 或 S2A Key 账号可设置独立的剩余额度阈值",
+          bottomHelpMessage: "每个有额度信息的 CPA/S2A 账号可设置独立的剩余额度阈值",
           component: "GSubForm",
           componentProps: {
             multiple: true,
@@ -368,7 +368,7 @@ async function refreshAccountOptions(config = loadConfig()) {
     if (hasServiceConfig(config.cpa, "managementKey")) {
       queries.push(
         withProxy(selectProxy(config.proxy, "cpa"), fetchImpl =>
-          listCpaQuotaAccounts(config.cpa, fetchImpl),
+          listCpaQuotaAccountOptions(config.cpa, fetchImpl),
         ),
       )
     }
