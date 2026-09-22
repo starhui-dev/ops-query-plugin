@@ -16,7 +16,7 @@ export function supportGuoba() {
       isV3: true,
       isV2: false,
       showInMenu: true,
-      description: "查询账号额度、渠道状态、SLA 和 Codex 重置动态",
+      description: "查询账号额度、渠道状态和 SLA",
       icon: "mdi:server-network",
       iconColor: "#287a6d",
     },
@@ -114,12 +114,6 @@ export function supportGuoba() {
           field: "proxy.codexRadarEnabled",
           label: "Codex 雷达",
           bottomHelpMessage: "Codex 雷达页面和速览图下载走代理",
-          component: "Switch",
-        },
-        {
-          field: "proxy.codexResetsEnabled",
-          label: "Codex 重置",
-          bottomHelpMessage: "Codex 重置手动查询和订阅检查走代理",
           component: "Switch",
         },
         {
@@ -247,7 +241,7 @@ export function supportGuoba() {
         {
           field: "alerts.intervalMinutes",
           label: "检查间隔",
-          bottomHelpMessage: "每隔多少分钟检查一次账号额度、重置订阅与 Sub2API SLA",
+          bottomHelpMessage: "每隔多少分钟检查一次账号额度与 Sub2API SLA",
           component: "InputNumber",
           required: true,
           componentProps: { min: 1, max: 1440, step: 1 },
@@ -309,12 +303,6 @@ export function supportGuoba() {
               },
             ],
           },
-        },
-        {
-          field: "alerts.codexResets.enabled",
-          label: "Codex 重置订阅",
-          bottomHelpMessage: "发现新的已确认 Codex 重置公告时推送到告警群聊",
-          component: "Switch",
         },
         {
           field: "alerts.sla.enabled",

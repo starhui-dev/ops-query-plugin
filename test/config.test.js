@@ -8,7 +8,6 @@ const current = {
     cpaEnabled: false,
     s2aEnabled: false,
     codexRadarEnabled: false,
-    codexResetsEnabled: false,
     randomBackgroundEnabled: false,
   },
   cpa: { baseUrl: "https://cpa.old", managementKey: "cpa-secret", timeoutMs: 10000 },
@@ -27,7 +26,6 @@ const current = {
     mentionMode: "none",
     mentionUsers: [],
     accounts: [],
-    codexResets: { enabled: false },
     sla: { enabled: false, thresholdPercent: 99.5, timeRange: "1h" },
   },
 }
@@ -53,7 +51,6 @@ test("锅巴可以分别选择走代理的功能", () => {
     "proxy.cpaEnabled": true,
     "proxy.s2aEnabled": true,
     "proxy.codexRadarEnabled": true,
-    "proxy.codexResetsEnabled": true,
     "proxy.randomBackgroundEnabled": true,
   })
   assert.deepEqual(updated.proxy, {
@@ -61,7 +58,6 @@ test("锅巴可以分别选择走代理的功能", () => {
     cpaEnabled: true,
     s2aEnabled: true,
     codexRadarEnabled: true,
-    codexResetsEnabled: true,
     randomBackgroundEnabled: true,
   })
 })
@@ -97,13 +93,6 @@ test("锅巴可以配置 CPA OAuth 与 S2A Key 账号额度告警", () => {
     { account: "cpa:codex:codex-a", thresholdPercent: 20 },
     { account: "s2a:kimi:26", thresholdPercent: 10 },
   ])
-})
-
-test("锅巴可以配置 Codex 重置订阅", () => {
-  const updated = applyConfigUpdate(current, {
-    "alerts.codexResets.enabled": true,
-  })
-  assert.deepEqual(updated.alerts.codexResets, { enabled: true })
 })
 
 test("锅巴可以配置余额申请", () => {
@@ -179,7 +168,6 @@ test("拒绝无效配置", () => {
     "cpaEnabled",
     "s2aEnabled",
     "codexRadarEnabled",
-    "codexResetsEnabled",
     "randomBackgroundEnabled",
   ]) {
     assert.throws(
@@ -246,7 +234,7 @@ test("拒绝无效配置", () => {
   )
 })
 
-test("启用告警时必须配置额度账号、Codex 重置订阅或 SLA 监控", () => {
+test("启用告警时必须配置额度账号或 SLA 监控", () => {
   assert.throws(
     () =>
       validateConfig({
@@ -257,18 +245,7 @@ test("启用告警时必须配置额度账号、Codex 重置订阅或 SLA 监控
           targetGroups: ["10001"],
         },
       }),
-    /至少配置一个额度账号、Codex 重置订阅或 SLA 监控/,
-  )
-  assert.doesNotThrow(() =>
-    validateConfig({
-      ...current,
-      alerts: {
-        ...current.alerts,
-        enabled: true,
-        targetGroups: ["10001"],
-        codexResets: { enabled: true },
-      },
-    }),
+    /至少配置一个额度账号或 SLA 监控/,
   )
   assert.doesNotThrow(() =>
     validateConfig({
@@ -291,21 +268,5 @@ test("启用告警时必须配置额度账号、Codex 重置订阅或 SLA 监控
         sla: { enabled: true, thresholdPercent: 99.5, timeRange: "1h" },
       },
     }),
-  )
-})
-
-test("校验旧版配置对象时兼容缺失的 Codex 重置订阅字段", () => {
-  const { codexResets: _codexResets, ...legacyAlerts } = current.alerts
-  assert.throws(
-    () =>
-      validateConfig({
-        ...current,
-        alerts: {
-          ...legacyAlerts,
-          enabled: true,
-          targetGroups: ["10001"],
-        },
-      }),
-    /至少配置一个额度账号、Codex 重置订阅或 SLA 监控/,
   )
 })

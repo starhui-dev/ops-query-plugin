@@ -14,7 +14,6 @@ proxy:
   cpaEnabled: false
   s2aEnabled: false
   codexRadarEnabled: false
-  codexResetsEnabled: false
   randomBackgroundEnabled: false
 
 display:
@@ -44,8 +43,6 @@ alerts:
   mentionMode: "none"
   mentionUsers: []
   accounts: []
-  codexResets:
-    enabled: false
   sla:
     enabled: false
     thresholdPercent: 99.5

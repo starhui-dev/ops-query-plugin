@@ -58,14 +58,6 @@ import {
   renderStatusImage,
 } from "../lib/render.js"
 import { fetchLatestCodexRadarImage } from "../lib/codex-radar.js"
-import {
-  evaluateCodexResetNotification,
-  formatCodexResetNotification,
-  formatCodexResetStatus,
-  loadCodexResetState,
-  queryCodexResetStatus,
-  saveCodexResetState,
-} from "../lib/codex-resets.js"
 import { selectProxy, withProxy } from "../lib/proxy.js"
 
 const quotaAlertStates = new Map()
@@ -76,7 +68,7 @@ export class OpsQuery extends plugin {
   constructor() {
     super({
       name: "运维查询",
-      dsc: "查询账号额度、渠道状态、SLA 和 Codex 重置动态",
+      dsc: "查询账号额度、渠道状态和 SLA",
       event: "message",
       priority: 5000,
       rule: OPS_QUERY_RULES,
@@ -98,7 +90,6 @@ export class OpsQuery extends plugin {
         "#渠道状态：查询 S2A 渠道监控",
         "#SLA：查询 Sub2API SLA",
         "#Codex雷达：获取 Codex 雷达最新速览图",
-        "#Codex重置：查询最新 Codex 重置公告",
         "#S2A绑定 <邮箱>：发送邮箱验证码，验证后直接绑定 S2A 账号",
         "#S2A验证码 <6位数字>：验证邮箱并完成绑定",
         "#S2A余额：查询已绑定 S2A 邮箱的当前余额",
@@ -490,17 +481,6 @@ export class OpsQuery extends plugin {
     }
   }
 
-  async codexReset() {
-    if (!(await this.ensureAccess())) return false
-    try {
-      const config = loadConfig()
-      const status = await queryCodexResetStatus(selectProxy(config.proxy, "codexResets"))
-      return this.reply(formatCodexResetStatus(status, config.display.timeZone))
-    } catch (error) {
-      logger.error(`[运维查询] Codex 重置查询失败：${error instanceof Error ? error.stack : error}`)
-      return this.reply(`Codex 重置查询失败：${safeError(error)}`)
-    }
-  }
 
   async ensureAccess() {
     const decision = checkQueryAccess(this.e, loadConfig().access)
@@ -529,7 +509,6 @@ export class OpsQuery extends plugin {
 
     await Promise.all([
       this.checkQuotaAlerts(config),
-      this.checkCodexResetAlert(config),
       this.checkSlaAlert(config),
     ])
   }
@@ -572,30 +551,6 @@ export class OpsQuery extends plugin {
     }
   }
 
-  async checkCodexResetAlert(config) {
-    if (!config.alerts.codexResets.enabled) return
-    try {
-      const status = await queryCodexResetStatus(selectProxy(config.proxy, "codexResets"))
-      const state = loadCodexResetState()
-      const decision = evaluateCodexResetNotification(status, state.latestResetId)
-      if (!decision.notification) {
-        if (decision.latestResetId && decision.latestResetId !== state.latestResetId) {
-          saveCodexResetState(decision.latestResetId)
-        }
-        return
-      }
-
-      await this.sendAlert(
-        config,
-        formatCodexResetNotification(decision.notification, config.display.timeZone),
-      )
-      saveCodexResetState(decision.latestResetId)
-    } catch (error) {
-      logger.error(
-        `[运维查询] Codex 重置订阅检查失败：${error instanceof Error ? error.stack : error}`,
-      )
-    }
-  }
 
   async sendAlert(config, content) {
     const message = [...buildMentionSegments(config.alerts), content]

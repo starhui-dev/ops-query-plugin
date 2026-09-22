@@ -1,7 +1,7 @@
 # ops-query-plugin
 
 面向 TRSS Yunzai 的运维查询与告警插件，集中展示 CLIProxyAPI（CPA）与
-Sub2API（S2A）账号额度、S2A 渠道状态和 SLA，并订阅 Codex 重置公告。
+Sub2API（S2A）账号额度、S2A 渠道状态和 SLA。
 
 状态消息默认渲染为图片：随机动漫背景加载失败时自动使用本地备用图，信息区采用透明
 毛玻璃卡片，避免 QQ 将邮箱等内容误识别为链接。
@@ -14,7 +14,6 @@ Sub2API（S2A）账号额度、S2A 渠道状态和 SLA，并订阅 Codex 重置�
 - 支持切换 S2A V1 / V2 监控：V1 展示主动探测延迟、Ping、可用率和检测记录；V2
   展示真实请求的成功率、首 Token 延迟、吞吐、缓存率、健康脉冲和模型排行。
 - 获取 Codex 雷达站发布的最新速览图。
-- 查询 Codex 最新重置公告和当前重置预测；发现新的已确认公告时向指定群聊推送通知。
 - 按 CPA/S2A 有额度账号设置独立额度阈值，向指定群聊发送图片告警并支持不提醒、
   @指定用户或@全体。
 - 按统计窗口监控 Sub2API SLA，排除余额不足、配额超限等业务限制，低于阈值时发送
@@ -24,7 +23,7 @@ Sub2API（S2A）账号额度、S2A 渠道状态和 SLA，并订阅 Codex 重置�
   主人可绕过全部查询限制。
 - 支持群成员绑定 Sub2API 用户账号并申请余额；邮箱验证后直接绑定，余额申请由机器人主人或
   配置的机器人审批人员回复申请消息 `#S2A通过` 或 `#S2A拒绝`，通过后自动调用 Sub2API 管理接口增加余额。
-- 可按功能选择 CPA、S2A、Codex 雷达、Codex 重置和随机背景请求是否走 HTTP/HTTPS 代理。
+- 可按功能选择 CPA、S2A、Codex 雷达和随机背景请求是否走 HTTP/HTTPS 代理。
 - 支持锅巴插件管理器，也可直接维护 YAML 配置。
 
 ## 环境要求
@@ -32,7 +31,7 @@ Sub2API（S2A）账号额度、S2A 渠道状态和 SLA，并订阅 Codex 重置�
 - TRSS Yunzai v3
 - Node.js 20 或更高版本
 - pnpm
-- 可访问 CPA、S2A、Codex Radar、Codex Resets 和背景图片接口的网络环境
+- 可访问 CPA、S2A、Codex Radar 和背景图片接口的网络环境
 
 ## 安装
 
@@ -63,7 +62,6 @@ pnpm install --prod --frozen-lockfile
 | `#渠道状态`                  | 查询 S2A 渠道监控                   |
 | `#SLA`                       | 查询 Sub2API SLA                    |
 | `#Codex雷达`                 | 获取 Codex 雷达最新速览图           |
-| `#Codex重置` / `#Codex 重置` | 查询最新 Codex 重置公告             |
 | `#S2A绑定 <邮箱>`            | 发送邮箱验证码，验证后直接绑定账号  |
 | `#S2A验证码 <6位数字>`       | 验证邮箱并完成绑定                  |
 | `#S2A余额`                   | 查询已绑定邮箱的当前余额            |
@@ -71,9 +69,7 @@ pnpm install --prod --frozen-lockfile
 | `#S2A通过` / `#S2A拒绝`      | 机器人主人/审批人员回复申请消息审批 |
 | `#运维查询帮助`              | 显示命令帮助                        |
 
-旧的 `#S2A额度`、`#S2A状态`、`#S2A SLA`、`#CPA…` 和 `#Codex额度` 命令不再响应。
-
-Codex 重置命令不区分英文字母大小写，并允许在 `Codex` 与中文命令词之间添加空格。
+旧的 `#S2A额度`、`#S2A状态`、`#S2A SLA`、`#CPA…`、`#Codex额度` 和 `#Codex重置` 命令不再响应。
 
 CPA 额度通过 CLIProxyAPI Management API 使用各账号对应的上游配额接口实时查询；S2A 优先使用
 账号快照，并按平台调用专用 quota/balance 接口补充 OpenAI、Grok、Kimi、Zhipu GLM、DeepSeek
@@ -98,7 +94,6 @@ CPA 账号名称优先使用认证文件的备注（`note`），其次使用 `la
 | `proxy.*`               | HTTP/HTTPS 代理地址和功能开关            |
 | `alerts.*`              | 告警与订阅总开关、周期、群聊及提醒方式   |
 | `alerts.accounts`       | CPA/S2A 额度账号及其额度告警阈值         |
-| `alerts.codexResets.*`  | Codex 重置公告订阅开关                   |
 | `alerts.sla.*`          | Sub2API SLA 开关、统计窗口和最低阈值     |
 
 告警目标群必须同时存在于群聊白名单。相同账号持续低于阈值时只提醒一次，额度恢复到
@@ -109,11 +104,6 @@ CPA 账号名称优先使用认证文件的备注（`note`），其次使用 `la
 `s2a:<平台>:<数字 ID>`，只要该账号仍能返回额度窗口或余额即可继续告警；没有额度信息的账号
 不会出现在账号额度和告警账号选项中。
 
-Codex 重置订阅使用 [Codex Resets 公共 API](https://codex-resets.com/api/docs)，只推送新的
-已确认重置公告，不推送 AI 预测。首次启用只记录当前最新公告，不补发历史内容；最后处理的
-Post ID 持久化在 `data/codex-resets.json`，机器人重启后不会重复推送。手动执行
-`#Codex重置` 无需启用订阅，并会同时展示当前 AI 预测且明确标记其非官方性质。
-
 可在锅巴的“代理设置”区域按功能选择是否走代理，也可直接配置 YAML：
 
 ```yaml
@@ -122,12 +112,10 @@ proxy:
   cpaEnabled: false
   s2aEnabled: false
   codexRadarEnabled: true
-  codexResetsEnabled: true
   randomBackgroundEnabled: false
 ```
 
-五个开关分别控制 CPA 查询与告警、S2A 查询与告警、Codex 雷达、Codex 重置查询与订阅、
-随机背景图下载。
+四个开关分别控制 CPA 查询与告警、S2A 查询与告警、Codex 雷达和随机背景图下载。
 未选中的功能始终直连，插件不会按域名或服务所在地区自动判断。支持 HTTP 和 HTTPS 代理；
 需要认证时可使用 `http://用户名:密码@主机:端口`。锅巴不会回显已保存的代理地址，地址
 输入框留空保存会保留原值；关闭对应功能开关即可让该功能恢复直连。
@@ -168,7 +156,7 @@ pnpm install
 pnpm check
 ```
 
-测试覆盖查询权限、配置校验、CPA/S2A 多类型账号额度及告警、余额、多币种余额、重置订阅、
+测试覆盖查询权限、配置校验、CPA/S2A 多类型账号额度及告警、余额、多币种余额、
 SLA 告警，以及 S2A V1 渠道历史与 V2 聚合指标处理。
 
 ## 上游项目
@@ -176,7 +164,6 @@ SLA 告警，以及 S2A V1 渠道历史与 V2 聚合指标处理。
 - [TRSS Yunzai](https://github.com/TimeRainStarSky/Yunzai)
 - [CLIProxyAPI](https://github.com/router-for-me/CLIProxyAPI)
 - [Sub2API](https://github.com/Wei-Shaw/sub2api)
-- [Codex Resets](https://codex-resets.com/)
 
 ## 第三方字体
 
