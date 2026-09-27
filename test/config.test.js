@@ -6,16 +6,19 @@ const current = {
   proxy: {
     url: "http://user:password@127.0.0.1:7890",
     cpaEnabled: false,
-    s2aEnabled: false,
+    newapiEnabled: false,
     codexRadarEnabled: false,
     randomBackgroundEnabled: false,
   },
   cpa: { baseUrl: "https://cpa.old", managementKey: "cpa-secret", timeoutMs: 10000 },
-  s2a: {
-    baseUrl: "https://s2a.old",
-    adminApiKey: "s2a-secret",
+  newapi: {
+    baseUrl: "https://newapi.old",
+    accessToken: "newapi-secret",
     timeoutMs: 10000,
-    monitorVersion: "v1",
+    channels: [
+      { channelId: 12, enabled: true, apiKey: "kimi-secret" },
+      { channelId: 13, enabled: false, apiKey: "" },
+    ],
   },
   display: { timeZone: "Asia/Shanghai" },
   access: { groupWhitelist: ["10001"], queryUsers: ["20001"] },
@@ -26,17 +29,45 @@ const current = {
     mentionMode: "none",
     mentionUsers: [],
     accounts: [],
-    sla: { enabled: false, thresholdPercent: 99.5, timeRange: "1h" },
   },
 }
 
-test("锅巴留空 CPA 与 S2A 密钥时保留原值", () => {
+test("锅巴留空 CPA 与 NewAPI 密钥时保留原值", () => {
   const updated = applyConfigUpdate(current, {
     "cpa.managementKey": "",
-    "s2a.adminApiKey": "",
+    "newapi.accessToken": "",
   })
   assert.equal(updated.cpa.managementKey, "cpa-secret")
-  assert.equal(updated.s2a.adminApiKey, "s2a-secret")
+  assert.equal(updated.newapi.accessToken, "newapi-secret")
+})
+
+test("锅巴按渠道保存显示开关，渠道 API Key 留空时保留原值", () => {
+  const updated = applyConfigUpdate(current, {
+    "newapi.channels": [
+      { channelId: 12, enabled: false, apiKey: "" },
+      { channelId: "13", enabled: true, apiKey: " glm-secret " },
+      { channelId: 14, enabled: true },
+    ],
+  })
+  assert.deepEqual(updated.newapi.channels, [
+    { channelId: 12, enabled: false, apiKey: "kimi-secret" },
+    { channelId: "13", enabled: true, apiKey: "glm-secret" },
+    { channelId: 14, enabled: true, apiKey: "" },
+  ])
+  assert.throws(
+    () =>
+      validateConfig({
+        ...current,
+        newapi: {
+          ...current.newapi,
+          channels: [
+            { channelId: 12, enabled: true, apiKey: "" },
+            { channelId: 12, enabled: false, apiKey: "" },
+          ],
+        },
+      }),
+    /NewAPI 渠道设置不能重复：#12/,
+  )
 })
 
 test("锅巴留空代理地址时保留原值", () => {
@@ -49,101 +80,35 @@ test("锅巴留空代理地址时保留原值", () => {
 test("锅巴可以分别选择走代理的功能", () => {
   const updated = applyConfigUpdate(current, {
     "proxy.cpaEnabled": true,
-    "proxy.s2aEnabled": true,
+    "proxy.newapiEnabled": true,
     "proxy.codexRadarEnabled": true,
     "proxy.randomBackgroundEnabled": true,
   })
   assert.deepEqual(updated.proxy, {
     ...current.proxy,
     cpaEnabled: true,
-    s2aEnabled: true,
+    newapiEnabled: true,
     codexRadarEnabled: true,
     randomBackgroundEnabled: true,
   })
 })
 
-test("锅巴可以切换 S2A 监控版本", () => {
-  const updated = applyConfigUpdate(current, { "s2a.monitorVersion": "v2" })
-  assert.equal(updated.s2a.monitorVersion, "v2")
-})
-
-test("锅巴可以配置 Sub2API SLA 告警", () => {
-  const updated = applyConfigUpdate(current, {
-    "alerts.sla.enabled": true,
-    "alerts.sla.thresholdPercent": 99.9,
-    "alerts.sla.timeRange": "6h",
-  })
-  assert.deepEqual(updated.alerts.sla, {
-    enabled: true,
-    thresholdPercent: 99.9,
-    timeRange: "6h",
-  })
-})
-
-test("锅巴可以配置 CPA OAuth 与 S2A Key 账号额度告警", () => {
+test("锅巴可以配置 CPA 与 NewAPI 账号额度告警", () => {
   const updated = applyConfigUpdate(current, {
     "alerts.accounts": [
       { account: "cpa:claude:claude-a", thresholdPercent: 20 },
       { account: "cpa:codex:codex-a", thresholdPercent: 20 },
-      { account: "s2a:kimi:26", thresholdPercent: 10 },
+      { account: "newapi:codex:12", thresholdPercent: 10 },
     ],
   })
   assert.deepEqual(updated.alerts.accounts, [
     { account: "cpa:claude:claude-a", thresholdPercent: 20 },
     { account: "cpa:codex:codex-a", thresholdPercent: 20 },
-    { account: "s2a:kimi:26", thresholdPercent: 10 },
+    { account: "newapi:codex:12", thresholdPercent: 10 },
   ])
 })
 
-test("锅巴可以配置余额申请", () => {
-  const updated = applyConfigUpdate(current, {
-    "balanceRequests.enabled": true,
-    "balanceRequests.maxAmount": 50,
-    "balanceRequests.adminUsers": ["30001"],
-  })
-  assert.deepEqual(updated.balanceRequests, {
-    enabled: true,
-    maxAmount: 50,
-    adminUsers: ["30001"],
-  })
-})
-
-test("邮箱验证码启用时必须配置 SMTP 和发件人", () => {
-  assert.throws(
-    () =>
-      validateConfig({
-        ...current,
-        balanceRequests: {
-          enabled: true,
-          maxAmount: 100,
-          adminUsers: [],
-          emailVerification: { enabled: true },
-        },
-      }),
-    /必须填写 SMTP 地址/,
-  )
-  assert.doesNotThrow(() =>
-    validateConfig({
-      ...current,
-      balanceRequests: {
-        enabled: true,
-        maxAmount: 100,
-        adminUsers: [],
-        emailVerification: {
-          enabled: true,
-          smtpHost: "smtp.example.com",
-          smtpPort: 465,
-          smtpSecure: true,
-          smtpUser: "bot@example.com",
-          smtpPassword: "app-password",
-          from: "bot@example.com",
-        },
-      },
-    }),
-  )
-})
-
-test("校验 SLA 告警及群白名单", () => {
+test("校验告警群白名单", () => {
   const valid = {
     ...current,
     alerts: {
@@ -153,7 +118,7 @@ test("校验 SLA 告警及群白名单", () => {
       targetGroups: ["10001"],
       mentionMode: "users",
       mentionUsers: ["20001"],
-      sla: { enabled: true, thresholdPercent: 99.5, timeRange: "1h" },
+      accounts: [{ account: "newapi:codex:12", thresholdPercent: 20 }],
     },
   }
   assert.doesNotThrow(() => validateConfig(valid))
@@ -166,7 +131,7 @@ test("校验 SLA 告警及群白名单", () => {
 test("拒绝无效配置", () => {
   for (const field of [
     "cpaEnabled",
-    "s2aEnabled",
+    "newapiEnabled",
     "codexRadarEnabled",
     "randomBackgroundEnabled",
   ]) {
@@ -192,23 +157,16 @@ test("拒绝无效配置", () => {
     /只支持 HTTP 或 HTTPS/,
   )
   assert.throws(
-    () => validateConfig({ ...current, s2a: { ...current.s2a, baseUrl: "file:///tmp/config" } }),
-    /只支持 HTTP 或 HTTPS/,
-  )
-  assert.throws(
-    () => validateConfig({ ...current, s2a: { ...current.s2a, timeoutMs: 100 } }),
-    /1000 至 60000/,
-  )
-  assert.throws(
     () =>
       validateConfig({
         ...current,
-        alerts: {
-          ...current.alerts,
-          sla: { enabled: true, thresholdPercent: 100.1, timeRange: "1h" },
-        },
+        newapi: { ...current.newapi, baseUrl: "file:///tmp/config" },
       }),
-    /SLA 告警阈值必须在 0 至 100/,
+    /只支持 HTTP 或 HTTPS/,
+  )
+  assert.throws(
+    () => validateConfig({ ...current, newapi: { ...current.newapi, timeoutMs: 100 } }),
+    /1000 至 60000/,
   )
   assert.throws(
     () =>
@@ -232,9 +190,20 @@ test("拒绝无效配置", () => {
       }),
     /必须选择有效的额度账号/,
   )
+  for (const account of ["newapi:gemini:12", "newapi:codex:not-an-id"]) {
+    assert.throws(
+      () =>
+        validateConfig({
+          ...current,
+          alerts: { ...current.alerts, accounts: [{ account, thresholdPercent: 20 }] },
+        }),
+      /必须选择有效的额度账号/,
+      account,
+    )
+  }
 })
 
-test("启用告警时必须配置额度账号或 SLA 监控", () => {
+test("启用告警时必须配置额度账号", () => {
   assert.throws(
     () =>
       validateConfig({
@@ -245,7 +214,7 @@ test("启用告警时必须配置额度账号或 SLA 监控", () => {
           targetGroups: ["10001"],
         },
       }),
-    /至少配置一个额度账号或 SLA 监控/,
+    /至少配置一个额度账号/,
   )
   assert.doesNotThrow(() =>
     validateConfig({
@@ -255,17 +224,6 @@ test("启用告警时必须配置额度账号或 SLA 监控", () => {
         enabled: true,
         targetGroups: ["10001"],
         accounts: [{ account: "cpa:codex:codex-a", thresholdPercent: 20 }],
-      },
-    }),
-  )
-  assert.doesNotThrow(() =>
-    validateConfig({
-      ...current,
-      alerts: {
-        ...current.alerts,
-        enabled: true,
-        targetGroups: ["10001"],
-        sla: { enabled: true, thresholdPercent: 99.5, timeRange: "1h" },
       },
     }),
   )

@@ -1,7 +1,7 @@
 {
   "name": "ops-query-plugin",
   "version": "0.1.0",
-  "description": "TRSS Yunzai plugin for CPA/S2A operations",
+  "description": "TRSS Yunzai plugin for CPA/NewAPI operations",
   "type": "module",
   "author": "RealHeart",
   "license": "GPL-3.0-only",
@@ -17,7 +17,7 @@
     "trss-yunzai",
     "yunzai",
     "cliproxyapi",
-    "sub2api",
+    "new-api",
     "codex"
   ],
   "engines": {
@@ -31,7 +31,6 @@
     "test": "node --test"
   },
   "dependencies": {
-    "nodemailer": "^7.0.13",
     "undici": "^6.28.0",
     "yaml": "^2.9.0"
   },

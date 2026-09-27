@@ -1,9 +1,10 @@
 import { getGuobaConfig, loadConfig, updateConfig } from "./lib/config.js"
 import { listCpaQuotaAccountOptions } from "./lib/cpa-quota.js"
+import { listNewapiChannelOptions, listNewapiQuotaAccountOptions } from "./lib/newapi-quota.js"
 import { selectProxy, withProxy } from "./lib/proxy.js"
-import { listS2aQuotaAccountOptions } from "./lib/s2a-quota.js"
 
 const accountOptions = []
+const newapiChannelOptions = []
 await refreshAccountOptions()
 
 export function supportGuoba() {
@@ -16,7 +17,7 @@ export function supportGuoba() {
       isV3: true,
       isV2: false,
       showInMenu: true,
-      description: "查询账号额度、渠道状态和 SLA",
+      description: "查询账号额度",
       icon: "mdi:server-network",
       iconColor: "#287a6d",
     },
@@ -49,43 +50,71 @@ export function supportGuoba() {
           componentProps: { min: 1000, max: 60000, step: 1000 },
         },
         {
-          label: "S2A 配置",
+          label: "NewAPI 配置",
           component: "SOFT_GROUP_BEGIN",
         },
         {
-          field: "s2a.baseUrl",
+          field: "newapi.baseUrl",
           label: "服务地址",
-          bottomHelpMessage: "Sub2API 地址，例如 https://s2a.example.com",
+          bottomHelpMessage: "NewAPI 地址，例如 https://newapi.example.com",
           component: "Input",
-          componentProps: { placeholder: "请输入 S2A 服务地址" },
+          componentProps: { placeholder: "请输入 NewAPI 服务地址" },
         },
         {
-          field: "s2a.adminApiKey",
-          label: "Admin API Key",
-          bottomHelpMessage: "留空保存会保留当前密钥",
+          field: "newapi.accessToken",
+          label: "访问令牌",
+          bottomHelpMessage:
+            "NewAPI 个人设置中生成的系统访问令牌，账号需具备渠道读取权限；留空保存会保留当前令牌",
           component: "InputPassword",
           componentProps: { placeholder: "留空表示不修改" },
         },
         {
-          field: "s2a.monitorVersion",
-          label: "监控版本",
-          bottomHelpMessage: "V1 使用主动探测；V2 使用请求统计，需要服务端已切换为 V2 模式",
-          component: "Select",
-          required: true,
-          componentProps: {
-            options: [
-              { label: "V1 主动探测", value: "v1" },
-              { label: "V2 请求统计", value: "v2" },
-            ],
-          },
-        },
-        {
-          field: "s2a.timeoutMs",
+          field: "newapi.timeoutMs",
           label: "请求超时",
           bottomHelpMessage: "单个 HTTP 请求的超时时间，单位为毫秒",
           component: "InputNumber",
           required: true,
           componentProps: { min: 1000, max: 60000, step: 1000 },
+        },
+        {
+          field: "newapi.channels",
+          label: "渠道设置",
+          bottomHelpMessage:
+            "未添加的渠道默认显示；Kimi / GLM Coding Plan 渠道需填写 API Key 才会查询和显示额度",
+          component: "GSubForm",
+          componentProps: {
+            multiple: true,
+            modalProps: { title: "NewAPI 渠道设置" },
+            schemas: [
+              {
+                field: "channelId",
+                label: "渠道",
+                component: "Select",
+                required: true,
+                componentProps: {
+                  options: newapiChannelOptions,
+                  placeholder: "请选择 NewAPI 渠道",
+                  showSearch: true,
+                  optionFilterProp: "label",
+                },
+              },
+              {
+                field: "enabled",
+                label: "显示",
+                bottomHelpMessage: "关闭后不在 #账号额度 中显示，已配置的额度告警不受影响",
+                component: "Switch",
+                defaultValue: true,
+              },
+              {
+                field: "apiKey",
+                label: "API Key",
+                bottomHelpMessage:
+                  "仅 Kimi / GLM Coding Plan 渠道需要，用于直连上游查询额度；已保存的 Key 不回显，留空保存会保留原值",
+                component: "InputPassword",
+                componentProps: { placeholder: "留空表示不修改" },
+              },
+            ],
+          },
         },
         {
           label: "代理设置",
@@ -105,9 +134,9 @@ export function supportGuoba() {
           component: "Switch",
         },
         {
-          field: "proxy.s2aEnabled",
-          label: "S2A 查询与告警",
-          bottomHelpMessage: "S2A 额度、渠道状态、SLA、账号列表和相关告警走代理",
+          field: "proxy.newapiEnabled",
+          label: "NewAPI 额度查询与告警",
+          bottomHelpMessage: "NewAPI 渠道额度、渠道列表、Kimi / GLM 上游额度查询和相关告警走代理",
           component: "Switch",
         },
         {
@@ -154,82 +183,6 @@ export function supportGuoba() {
           componentProps: { allowAdd: true, allowDel: true },
         },
         {
-          label: "余额申请",
-          component: "SOFT_GROUP_BEGIN",
-        },
-        {
-          field: "balanceRequests.enabled",
-          label: "启用余额申请",
-          bottomHelpMessage: "群成员通过邮箱验证码绑定 S2A 账号并提交余额申请",
-          component: "Switch",
-        },
-        {
-          field: "balanceRequests.maxAmount",
-          label: "单笔申请上限",
-          bottomHelpMessage: "管理员审批前的单笔金额上限",
-          component: "InputNumber",
-          required: true,
-          componentProps: { min: 0.01, max: 1000000, step: 1 },
-        },
-        {
-          field: "balanceRequests.adminUsers",
-          label: "额外审批人员",
-          bottomHelpMessage:
-            "填写机器人管理员 QQ 号；机器人主人默认可审批，群主和群管理员无审批权限",
-          component: "GTags",
-          componentProps: { allowAdd: true, allowDel: true },
-        },
-        {
-          label: "邮箱验证码",
-          component: "SOFT_GROUP_BEGIN",
-        },
-        {
-          field: "balanceRequests.emailVerification.enabled",
-          label: "启用邮箱验证码",
-          bottomHelpMessage: "绑定 S2A 邮箱前发送验证码；需要可用的 SMTP 服务",
-          component: "Switch",
-        },
-        {
-          field: "balanceRequests.emailVerification.smtpHost",
-          label: "SMTP 地址",
-          bottomHelpMessage: "例如 smtp.qq.com 或 smtp.example.com",
-          component: "Input",
-          componentProps: { placeholder: "请输入 SMTP 主机" },
-        },
-        {
-          field: "balanceRequests.emailVerification.smtpPort",
-          label: "SMTP 端口",
-          component: "InputNumber",
-          required: true,
-          componentProps: { min: 1, max: 65535, step: 1 },
-        },
-        {
-          field: "balanceRequests.emailVerification.smtpSecure",
-          label: "启用 TLS",
-          bottomHelpMessage: "465 端口通常开启；587 端口通常关闭并使用 STARTTLS",
-          component: "Switch",
-        },
-        {
-          field: "balanceRequests.emailVerification.smtpUser",
-          label: "SMTP 用户",
-          component: "Input",
-          componentProps: { placeholder: "例如 bot@example.com" },
-        },
-        {
-          field: "balanceRequests.emailVerification.smtpPassword",
-          label: "SMTP 密码",
-          bottomHelpMessage: "留空保存会保留当前密码",
-          component: "InputPassword",
-          componentProps: { placeholder: "留空表示不修改" },
-        },
-        {
-          field: "balanceRequests.emailVerification.from",
-          label: "发件人邮箱",
-          bottomHelpMessage: "通常填写 SMTP 用户邮箱",
-          component: "Input",
-          componentProps: { placeholder: "例如 bot@example.com" },
-        },
-        {
           label: "告警配置",
           component: "SOFT_GROUP_BEGIN",
         },
@@ -241,7 +194,7 @@ export function supportGuoba() {
         {
           field: "alerts.intervalMinutes",
           label: "检查间隔",
-          bottomHelpMessage: "每隔多少分钟检查一次账号额度与 Sub2API SLA",
+          bottomHelpMessage: "每隔多少分钟检查一次账号额度",
           component: "InputNumber",
           required: true,
           componentProps: { min: 1, max: 1440, step: 1 },
@@ -275,7 +228,7 @@ export function supportGuoba() {
         {
           field: "alerts.accounts",
           label: "监控账号",
-          bottomHelpMessage: "每个有额度信息的 CPA/S2A 账号可设置独立的剩余额度阈值",
+          bottomHelpMessage: "每个有额度信息的 CPA/NewAPI 账号可设置独立的剩余额度阈值",
           component: "GSubForm",
           componentProps: {
             multiple: true,
@@ -304,35 +257,6 @@ export function supportGuoba() {
             ],
           },
         },
-        {
-          field: "alerts.sla.enabled",
-          label: "SLA 监控",
-          bottomHelpMessage: "监控 Sub2API Ops SLA；业务限制类错误不会计入异常",
-          component: "Switch",
-        },
-        {
-          field: "alerts.sla.timeRange",
-          label: "SLA 统计窗口",
-          component: "Select",
-          required: true,
-          componentProps: {
-            options: [
-              { label: "近 5 分钟", value: "5m" },
-              { label: "近 30 分钟", value: "30m" },
-              { label: "近 1 小时", value: "1h" },
-              { label: "近 6 小时", value: "6h" },
-              { label: "近 24 小时", value: "24h" },
-            ],
-          },
-        },
-        {
-          field: "alerts.sla.thresholdPercent",
-          label: "SLA 告警阈值",
-          bottomHelpMessage: "排除业务限制后的 SLA 低于此值时告警",
-          component: "InputNumber",
-          required: true,
-          componentProps: { min: 0, max: 100, step: 0.001, addonAfter: "%" },
-        },
       ],
       getConfigData() {
         return getGuobaConfig()
@@ -360,18 +284,25 @@ async function refreshAccountOptions(config = loadConfig()) {
         ),
       )
     }
-    if (hasServiceConfig(config.s2a, "adminApiKey")) {
+    if (hasServiceConfig(config.newapi, "accessToken")) {
       queries.push(
-        withProxy(selectProxy(config.proxy, "s2a"), fetchImpl =>
-          listS2aQuotaAccountOptions(config.s2a, fetchImpl),
+        withProxy(selectProxy(config.proxy, "newapi"), fetchImpl =>
+          listNewapiQuotaAccountOptions(config.newapi, fetchImpl),
         ),
       )
     }
-    const settled = await Promise.allSettled(queries)
+    const channelQuery = hasServiceConfig(config.newapi, "accessToken")
+      ? withProxy(selectProxy(config.proxy, "newapi"), fetchImpl =>
+          listNewapiChannelOptions(config.newapi, fetchImpl),
+        ).catch(() => [])
+      : Promise.resolve([])
+    const [settled, channels] = await Promise.all([Promise.allSettled(queries), channelQuery])
     const options = settled.flatMap(result => (result.status === "fulfilled" ? result.value : []))
     accountOptions.splice(0, accountOptions.length, ...options)
+    newapiChannelOptions.splice(0, newapiChannelOptions.length, ...channels)
   } catch {
     accountOptions.splice(0, accountOptions.length)
+    newapiChannelOptions.splice(0, newapiChannelOptions.length)
   }
 }
 
