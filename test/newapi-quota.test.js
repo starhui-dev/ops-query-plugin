@@ -1,5 +1,6 @@
 import assert from "node:assert/strict"
 import test from "node:test"
+import { formatAccountQuota } from "../lib/account-quota.js"
 import {
   listNewapiChannelOptions,
   listNewapiQuotaAccountOptions,
@@ -255,7 +256,16 @@ function glmUsage() {
     data: {
       level: "pro",
       limits: [
-        { type: "TIME_LIMIT", unit: 5, percentage: 1, nextResetTime: 1788000000000 },
+        {
+          type: "TIME_LIMIT",
+          unit: 5,
+          number: 1,
+          usage: 4000,
+          currentValue: 40,
+          remaining: 3960,
+          percentage: 1,
+          nextResetTime: 1788000000000,
+        },
         { type: "TOKENS_LIMIT", unit: 6, percentage: 30, nextResetTime: 1786700000000 },
         { type: "TOKENS_LIMIT", unit: 3, percentage: 12, nextResetTime: 1786710000000 },
       ],
@@ -335,10 +345,16 @@ test("NewAPI Kimi / GLM 使用渠道配置的 Key 直连上游，未配置 Key �
   assert.equal(glm.label, "GLM")
   assert.equal(glm.plan, "pro")
   assert.deepEqual(
-    glm.windows.map(window => [window.label, window.usedPercent, window.resetAt.getTime()]),
+    glm.windows.map(window => [
+      window.label,
+      window.usedPercent,
+      window.resetAt.getTime(),
+      window.detail,
+    ]),
     [
-      ["5 小时", 12, 1786710000000],
-      ["每周", 30, 1786700000000],
+      ["5 小时", 12, 1786710000000, undefined],
+      ["每周", 30, 1786700000000, undefined],
+      ["工具调用 每月", 1, 1788000000000, "用量 40 / 4000"],
     ],
   )
 })
@@ -445,4 +461,58 @@ test("NewAPI DeepSeek 配置 Key 后直连官方接口按原始币种显示，�
     detail: "充值 100｜赠送 10",
     resetAt: null,
   })
+})
+
+test("NewAPI GLM 滚动窗口未开始时标注首次使用后开始计时", async () => {
+  const newapiFetch = createNewapiFetch(
+    [],
+    [{ id: 4, type: 26, name: "GLM Max", status: 1, base_url: "glm-coding-plan" }],
+  )
+  // 与服务器实测的 GLM Max 套餐返回结构一致：5 小时窗口未使用时没有 nextResetTime。
+  const results = await queryNewapiQuota(
+    { ...config, channels: [{ channelId: 4, enabled: true, apiKey: "glm-key" }] },
+    "Asia/Shanghai",
+    [],
+    async (url, options) => {
+      if (new URL(url).hostname === "open.bigmodel.cn") {
+        return jsonResponse({
+          code: 200,
+          success: true,
+          data: {
+            limits: [
+              {
+                type: "TIME_LIMIT",
+                unit: 5,
+                number: 1,
+                usage: 4000,
+                currentValue: 0,
+                remaining: 4000,
+                percentage: 0,
+                nextResetTime: 1793006108998,
+              },
+              { type: "TOKENS_LIMIT", unit: 3, number: 5, percentage: 0 },
+            ],
+            level: "max",
+          },
+        })
+      }
+      return newapiFetch(url, options)
+    },
+  )
+
+  assert.equal(results[0].plan, "max")
+  assert.deepEqual(results[0].windows[0], {
+    label: "5 小时",
+    usedPercent: 0,
+    resetAt: null,
+    resetNote: "首次使用后开始计时",
+  })
+  assert.equal(results[0].windows[1].label, "工具调用 每月")
+  assert.equal(results[0].windows[1].detail, "用量 0 / 4000")
+  assert.equal(results[0].windows[1].resetAt.getTime(), 1793006108998)
+
+  const text = formatAccountQuota(results)
+  assert.match(text, /5 小时  剩余 100%  首次使用后开始计时/)
+  assert.match(text, /工具调用 每月  剩余 100%  用量 0 \/ 4000  重置于 10\/26 17:15/)
+  assert.doesNotMatch(text, /重置时间未知/)
 })

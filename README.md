@@ -74,7 +74,9 @@ SiliconFlow 和 DeepSeek 渠道只展示 NewAPI 已缓存的余额及其更新�
 NewAPI 不对外返回渠道 Key，因此 Kimi For Coding 与 GLM Coding Plan 渠道需要在
 `newapi.channels` 中为对应渠道单独填写 API Key，由插件直连上游查询：Kimi 请求
 `https://api.kimi.com/coding/v1/usages`，GLM 按渠道地址请求 `open.bigmodel.cn` 或 `api.z.ai`
-的 `/api/monitor/usage/quota/limit`，展示 5 小时和每周窗口。渠道按 `base_url` 识别：NewAPI 的
+的 `/api/monitor/usage/quota/limit`，展示 5 小时和每周窗口；GLM 另外展示 MCP 工具（联网搜索、
+网页读取等）的调用次数额度，同样参与额度告警。GLM 的 5 小时窗口从首次调用开始计时，未使用时
+上游不返回重置时间，此时显示“首次使用后开始计时”；套餐没有每周限额时只显示 5 小时窗口。渠道按 `base_url` 识别：NewAPI 的
 `kimi-coding-plan`、`glm-coding-plan`、`glm-coding-plan-international` 预设，或
 `api.kimi.com`、`bigmodel.cn`、`z.ai` 域名的地址，渠道类型不限；这类渠道支持多密钥模式。
 未填写 Key 的 Kimi/GLM 渠道即使开启显示也不会展示。GLM 团队版（需要组织/项目请求头）暂不支持。
