@@ -361,3 +361,88 @@ test("NewAPI 告警与告警选项不受显示开关影响", async () => {
     ["newapi:kimi:21", "newapi:kimi:22", "newapi:glm:23", "newapi:codex:1"],
   )
 })
+
+test("NewAPI DeepSeek 配置 Key 后直连官方接口按原始币种显示，未配置时沿用 NewAPI 缓存余额", async () => {
+  const items = [
+    {
+      id: 5,
+      type: 43,
+      name: "DeepSeek 直连",
+      status: 1,
+      balance: 1.5,
+      balance_updated_time: 1786680000,
+    },
+    {
+      id: 6,
+      type: 43,
+      name: "DeepSeek 缓存",
+      status: 1,
+      balance: 3.5,
+      balance_updated_time: 1786680000,
+    },
+    {
+      id: 7,
+      type: 43,
+      name: "DeepSeek Key 失效",
+      status: 1,
+      balance: 2,
+      balance_updated_time: 1786680000,
+    },
+  ]
+  const deepseekConfig = {
+    ...config,
+    channels: [
+      { channelId: 5, enabled: true, apiKey: "ds-key" },
+      { channelId: 7, enabled: true, apiKey: "bad-key" },
+    ],
+  }
+  const requests = []
+  const newapiFetch = createNewapiFetch([], items)
+  const results = await queryNewapiQuota(
+    deepseekConfig,
+    "Asia/Shanghai",
+    [],
+    async (url, options) => {
+      const parsed = new URL(url)
+      if (parsed.hostname === "api.deepseek.com") {
+        requests.push([parsed.href, options.headers.Authorization])
+        if (options.headers.Authorization === "Bearer bad-key") {
+          return jsonResponse({ error: { message: "Authentication Fails" } }, 401)
+        }
+        return jsonResponse({
+          is_available: true,
+          balance_infos: [
+            {
+              currency: "CNY",
+              total_balance: "110.00",
+              granted_balance: "10.00",
+              topped_up_balance: "100.00",
+            },
+          ],
+        })
+      }
+      return newapiFetch(url, options)
+    },
+  )
+
+  assert.deepEqual(requests, [
+    ["https://api.deepseek.com/user/balance", "Bearer ds-key"],
+    ["https://api.deepseek.com/user/balance", "Bearer bad-key"],
+  ])
+  assert.deepEqual(
+    results.map(result => [result.account.id, result.windows[0].label, result.windows[0].balance]),
+    [
+      [5, "余额 CNY", 110],
+      [6, "余额 USD", 3.5],
+    ],
+  )
+  assert.deepEqual(results[0].windows[0], {
+    label: "余额 CNY",
+    usedPercent: null,
+    balance: 110,
+    currency: "CNY",
+    available: true,
+    detail: "充值 100｜赠送 10",
+    resetAt: null,
+  })
+})

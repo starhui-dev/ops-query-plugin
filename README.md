@@ -10,8 +10,9 @@ NewAPI 的账号额度。
 
 - 统一查看 CPA 与 NewAPI 中有额度信息的账号：CPA 支持 Codex、Claude、Antigravity、Kimi、
   xAI 等 OAuth 账号；NewAPI 支持 Codex 渠道、Kimi For Coding 与 GLM Coding Plan 渠道的
-  额度窗口，以及 OpenAI、自定义渠道、OpenRouter、Moonshot、SiliconFlow、DeepSeek 渠道已缓存的
-  余额。展示套餐、剩余百分比、余额和重置时间，并可按渠道关闭显示。
+  额度窗口，DeepSeek 渠道的实时余额，以及 OpenAI、自定义渠道、OpenRouter、Moonshot、
+  SiliconFlow、DeepSeek 渠道已缓存的余额。展示套餐、剩余百分比、余额和重置时间，并可按渠道
+  关闭显示。
 - 获取 Codex 雷达站发布的最新速览图。
 - 按 CPA/NewAPI 有额度账号设置独立额度阈值，向指定群聊发送图片告警并支持不提醒、
   @指定用户或@全体。
@@ -66,7 +67,8 @@ CPA 账号名称优先使用认证文件的备注（`note`），其次使用 `la
 NewAPI 额度通过管理接口读取渠道列表：Codex 渠道（ChatGPT Subscription）调用
 `/api/channel/:id/codex/usage` 实时查询额度窗口；OpenAI、自定义渠道、OpenRouter、Moonshot、
 SiliconFlow 和 DeepSeek 渠道只展示 NewAPI 已缓存的余额及其更新时间，插件不会主动刷新余额。
-除 SiliconFlow 按 NewAPI 保存的人民币原值展示外，余额均为美元。手动禁用的渠道、多密钥渠道、
+除 SiliconFlow 按 NewAPI 保存的人民币原值展示外，余额均为美元（NewAPI 会把 DeepSeek、Moonshot
+的人民币余额按自身汇率折成美元保存）。手动禁用的渠道、多密钥渠道、
 从未刷新过余额的渠道和额度查询失败的渠道会被隐藏；账号名称使用 NewAPI 渠道名称。
 
 NewAPI 不对外返回渠道 Key，因此 Kimi For Coding 与 GLM Coding Plan 渠道需要在
@@ -76,6 +78,11 @@ NewAPI 不对外返回渠道 Key，因此 Kimi For Coding 与 GLM Coding Plan �
 `kimi-coding-plan`、`glm-coding-plan`、`glm-coding-plan-international` 预设，或
 `api.kimi.com`、`bigmodel.cn`、`z.ai` 域名的地址，渠道类型不限；这类渠道支持多密钥模式。
 未填写 Key 的 Kimi/GLM 渠道即使开启显示也不会展示。GLM 团队版（需要组织/项目请求头）暂不支持。
+
+DeepSeek 渠道也可以在 `newapi.channels` 中填写 API Key：填写后插件直连
+`https://api.deepseek.com/user/balance`，按接口返回的原始币种（通常为人民币）展示实时余额及
+充值、赠送明细；未填写时仍展示 NewAPI 缓存的美元余额。填写了 Key 但查询失败的 DeepSeek 渠道会
+被隐藏，不会回落到缓存余额。
 
 `newapi.channels` 中每个渠道还有显示开关，关闭后该渠道不出现在 `#账号额度` 中；未列出的渠道
 默认显示。显示开关不影响已配置的额度告警，关闭显示的渠道仍可在告警账号中选择。
@@ -90,7 +97,7 @@ NewAPI 不对外返回渠道 Key，因此 Kimi For Coding 与 GLM Coding Plan �
 | `cpa.managementKey`     | CLIProxyAPI Management Key               |
 | `newapi.baseUrl`        | NewAPI 服务地址                          |
 | `newapi.accessToken`    | NewAPI 系统访问令牌                      |
-| `newapi.channels`       | 按渠道设置显示开关及 Kimi/GLM API Key    |
+| `newapi.channels`       | 按渠道设置显示开关及上游 API Key         |
 | `display.timeZone`      | 状态和告警更新时间所用时区               |
 | `access.groupWhitelist` | 普通用户可使用插件的群聊                 |
 | `access.queryUsers`     | 可执行查询的普通用户，留空只放开白名单群 |
@@ -134,7 +141,7 @@ Codex 雷达和随机背景图下载。
 - `config/config.yaml` 已加入 `.gitignore`，不要提交或分享真实密钥。
 - 锅巴读取配置时不会回传 CPA Management Key、NewAPI 访问令牌或渠道 API Key；密钥输入留空
   保存会保留原值。如需清除某个渠道的 API Key，删除该渠道设置即可。
-- Kimi/GLM 渠道 API Key 以明文保存在 `config/config.yaml`，只发送给对应的固定上游额度接口；
+- Kimi/GLM/DeepSeek 渠道 API Key 以明文保存在 `config/config.yaml`，只发送给对应的固定上游额度接口；
   建议只为需要查询额度的渠道填写。
 - 锅巴不会回传代理地址，因为地址中可能包含代理认证信息。
 - CPA 与 NewAPI 的 OAuth、API Key 等凭据仍由对应平台管理；本插件只读取账号清单并查询额度，

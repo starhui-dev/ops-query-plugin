@@ -8,7 +8,7 @@ newapi:
   accessToken: ""
   timeoutMs: 10000
   # 按 NewAPI 渠道设置：enabled 控制是否在 #账号额度 中显示（未列出的渠道默认显示）；
-  # Kimi / GLM Coding Plan 渠道需填写 apiKey 才能查询额度。
+  # Kimi / GLM Coding Plan 渠道需填写 apiKey 才能查询额度；DeepSeek 渠道填写后改为直连查询实时余额。
   channels: []
 
 proxy:

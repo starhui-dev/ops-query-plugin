@@ -80,7 +80,7 @@ export function supportGuoba() {
           field: "newapi.channels",
           label: "渠道设置",
           bottomHelpMessage:
-            "未添加的渠道默认显示；Kimi / GLM Coding Plan 渠道需填写 API Key 才会查询和显示额度",
+            "未添加的渠道默认显示；Kimi / GLM Coding Plan 渠道需填写 API Key 才会查询和显示额度；DeepSeek 渠道填写后改为直连查询实时余额",
           component: "GSubForm",
           componentProps: {
             multiple: true,
@@ -109,7 +109,7 @@ export function supportGuoba() {
                 field: "apiKey",
                 label: "API Key",
                 bottomHelpMessage:
-                  "仅 Kimi / GLM Coding Plan 渠道需要，用于直连上游查询额度；已保存的 Key 不回显，留空保存会保留原值",
+                  "Kimi / GLM Coding Plan 渠道必填；DeepSeek 渠道选填，填写后按原始币种显示实时余额。用于直连上游查询，已保存的 Key 不回显，留空保存会保留原值",
                 component: "InputPassword",
                 componentProps: { placeholder: "留空表示不修改" },
               },
